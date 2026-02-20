@@ -42,12 +42,24 @@ public class ReservaService {
 
     @Transactional
     public ReservaResponse criar(ReservaRequest request) {
+        // Busca as entidades através dos serviços específicos
         Sala sala = salaService.buscarEntidade(request.salaId());
         Usuario usuario = usuarioService.buscarEntidade(request.usuarioId());
 
-        if (!sala.isAtiva()) {
+        // Regra de Negócio: Sala deve estar ativa
+        // Nota: Certifique-se que o método na Sala.java é isAtiva() ou getAtiva()
+        if (sala.getStatus() == null || !sala.isAtiva()) {
             throw new BusinessException("Não é possível reservar uma sala inativa");
         }
+
+        // Regra de Negócio: Coerência de Datas (Início deve ser antes do Fim)
+        if (request.dataHoraFim().isBefore(request.dataHoraInicio()) ||
+                request.dataHoraFim().isEqual(request.dataHoraInicio())) {
+            throw new BusinessException("A data de fim deve ser posterior à data de início");
+        }
+
+        // Regra de Negócio: Validar Conflito de Horário
+        validarConflito(sala.getSalaID(), request.dataHoraInicio(), request.dataHoraFim());
 
         Reserva reserva = new Reserva();
         reserva.setSala(sala);
@@ -56,22 +68,16 @@ public class ReservaService {
         reserva.setDataHoraFim(request.dataHoraFim());
         reserva.setStatus(StatusReserva.ATIVA);
 
-        if (!reserva.periodoValido()) {
-            throw new BusinessException("Data/hora de início deve ser anterior à data/hora de fim");
-        }
-
-        validarConflito(sala.getSalaID(), reserva.getDataHoraInicio(), reserva.getDataHoraFim());
-
         return ReservaResponse.fromEntity(reservaRepository.save(reserva));
     }
 
     @Transactional
     public ReservaResponse cancelar(UUID id) {
         Reserva reserva = buscarEntidade(id);
-        if (!reserva.isAtiva()) {
+        if (reserva.getStatus() == StatusReserva.CANCELADA) {
             return ReservaResponse.fromEntity(reserva);
         }
-        reserva.cancelar();
+        reserva.setStatus(StatusReserva.CANCELADA);
         return ReservaResponse.fromEntity(reservaRepository.save(reserva));
     }
 
@@ -88,8 +94,7 @@ public class ReservaService {
                 fim
         );
         if (existeConflito) {
-            throw new BusinessException("Já existe reserva para esta sala no período informado");
+            throw new BusinessException("Já existe uma reserva ativa para esta sala no período informado");
         }
     }
 }
-

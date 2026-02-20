@@ -45,7 +45,7 @@ public class ReservaController {
 
     @PostMapping("/{id}/cancelamento")
     @Operation(summary = "Cancela uma reserva", description = "Verifica a existência e cancela a reserva")
-    public ReservaResponse cancelar(@PathVariable UUID id) {
+    public ReservaResponse cancelar(@PathVariable @Valid UUID id) {
         return reservaService.cancelar(id);
     }
 }

@@ -2,6 +2,7 @@ package com.example.reservation.service;
 
 import com.example.reservation.dto.SalaRequest;
 import com.example.reservation.dto.SalaResponse;
+import com.example.reservation.exception.BusinessException;
 import com.example.reservation.exception.NotFoundException;
 import com.example.reservation.model.Sala;
 import com.example.reservation.model.StatusSala;
@@ -42,10 +43,15 @@ public class SalaService {
 
     @Transactional
     public SalaResponse criar(SalaRequest request) {
+        // Regra de Negócio: Nome da sala deve ser único
+        if (salaRepository.existsByNome(request.nome())) {
+            throw new BusinessException("Já existe uma sala cadastrada com este nome");
+        }
+
         Sala sala = new Sala();
         sala.setNome(request.nome());
         sala.setCapacidade(request.capacidade());
-        sala.setStatus(request.status());
+        sala.setStatus(request.status() != null ? request.status() : StatusSala.ATIVA);
         sala.setLocalizacao(request.localizacao());
         return SalaResponse.fromEntity(salaRepository.save(sala));
     }
@@ -53,6 +59,12 @@ public class SalaService {
     @Transactional
     public SalaResponse atualizar(UUID id, SalaRequest request) {
         Sala sala = buscarEntidade(id);
+
+        // Verifica duplicidade de nome ao atualizar
+        if (!sala.getNome().equals(request.nome()) && salaRepository.existsByNome(request.nome())) {
+            throw new BusinessException("Outra sala já utiliza este nome");
+        }
+
         sala.setNome(request.nome());
         sala.setCapacidade(request.capacidade());
         sala.setStatus(request.status());
