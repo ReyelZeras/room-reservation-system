@@ -1,10 +1,12 @@
 package com.example.reservation.model;
 
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
-
-
+/**
+ * Status possíveis de uma reserva.
+ *
+ * Transições permitidas:
+ * - ATIVA -> CANCELADA (quando o usuário cancela a reserva);
+ * - CANCELADA não volta para ATIVA (mantendo histórico consistente).
+ */
 public enum StatusReserva {
     ATIVA,
     CANCELADA
