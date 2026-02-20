@@ -16,4 +16,6 @@ public interface SalaRepository extends JpaRepository<Sala, UUID> {
      * Evita replicar o filtro de status na camada de serviço.
      */
     List<Sala> findByStatus(StatusSala status);
+
+    boolean existsByNome(String nome);
 }
