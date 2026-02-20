@@ -1,14 +1,12 @@
 package com.example.reservation.model;
 
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-
-
-@Getter
-@Setter
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+/**
+ * Status possíveis de uma sala.
+ *
+ * - ATIVA: pode receber novas reservas;
+ * - INATIVA: não aceita novas reservas, mas reservas antigas são mantidas
+ *   apenas para histórico.
+ */
 public enum StatusSala {
     ATIVA,
     INATIVA
