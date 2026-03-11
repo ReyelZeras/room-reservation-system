@@ -30,7 +30,7 @@ public class Usuario {
      */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @EqualsAndHashCode.Include
+    @Column(name = "usuario_id")
     private UUID userID;
 
     /**
