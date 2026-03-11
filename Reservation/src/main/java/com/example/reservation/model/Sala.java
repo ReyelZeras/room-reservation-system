@@ -32,6 +32,7 @@ public class Sala {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @EqualsAndHashCode.Include
+    @Column(name = "sala_id")
     private UUID salaID;
 
     /**
