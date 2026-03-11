@@ -34,6 +34,7 @@ public class Reserva {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @EqualsAndHashCode.Include
+    @Column(name = "reserva_id")
     private UUID reservaID;
 
     /**
