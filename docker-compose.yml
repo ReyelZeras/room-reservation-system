@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # --- BANCOS DE DADOS ISOLADOS (Nível 2 exige um por serviço) ---
+  user-db:
+    image: postgres:15-alpine
+    container_name: user-db
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: user_user
+      POSTGRES_PASSWORD: user_pass
+    ports:
+      - "5441:5432"
+
+  room-db:
+    image: postgres:15-alpine
+    container_name: room-db
+    environment:
+      POSTGRES_DB: room_db
+      POSTGRES_USER: room_user
+      POSTGRES_PASSWORD: room_pass
+    ports:
+      - "5442:5432"
+
+  booking-db:
+    image: postgres:15-alpine
+    container_name: booking-db
+    environment:
+      POSTGRES_DB: booking_db
+      POSTGRES_USER: booking_user
+      POSTGRES_PASSWORD: booking_pass
+    ports:
+      - "5440:5432"
+
+  # --- MENSAGERIA: RABBITMQ (Notificações) ---
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # Porta do Broker
+      - "15672:15672" # Painel de Controle (Login: guest/guest)
+
+  # --- MENSAGERIA: KAFKA (Relatórios e Auditoria) ---
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: zookeeper
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+    ports:
+      - "9092:9092"
+
+networks:
+  default:
+    name: room-res-network
