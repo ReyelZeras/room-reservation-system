@@ -3,7 +3,7 @@ package com.roomres.user_service.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.validator.constraints.UUID;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -34,10 +34,13 @@ public class User {
     private String providerId;
     
     private String role;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
     
     @PrePersist
     protected void onCreate(){
-        LocalDateTime createdAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
         if (role == null) role = "USER";
     }
 
