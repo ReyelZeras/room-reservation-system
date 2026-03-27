@@ -5,10 +5,12 @@ import com.roomres.user_service.repository.UserRepository;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.stereotype.Service;
+
 
 import java.util.Map;
-import java.util.Objects;
 
+@Service
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
@@ -32,17 +34,21 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         if (email == null) email = login + "@github.com";
 
         //Guardar ou atualizar no banco
-        String finalEmail = email;
+        final String finalEmail = email;
+
+        // Busca o usuário pelo ID do GitHub ou cria um novo usando construtor manual
         userRepository.findByProviderId(providerId)
-                .orElseGet(() -> userRepository.save(User.builder()
-                        .email(finalEmail)
-                        .username(login)
-                        .name(name)
-                        .provider("github")
-                        .providerId(providerId)
-                        .role("USER")
-                        .build()
-                ));
+                .orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setUsername(login);
+                    newUser.setEmail(finalEmail);
+                    newUser.setName(name);
+                    newUser.setProvider("github");
+                    newUser.setProviderId(providerId);
+                    newUser.setRole("USER");
+                    return userRepository.save(newUser);
+                });
+
 
         return oAuth2User;
     }
