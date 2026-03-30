@@ -1,5 +1,6 @@
 package com.roomres.user_service.model;
-
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -14,6 +15,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SQLDelete(sql = "UPDATE users SET active = false WHERE id=?")
+@SQLRestriction("active = true")
 public class User {
 
     @Id
@@ -37,6 +40,9 @@ public class User {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Builder.Default
+    private boolean active = true;
     
     @PrePersist
     protected void onCreate(){
