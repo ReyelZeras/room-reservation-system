@@ -13,25 +13,23 @@ public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
 
-    // Injetamos o serviço que você já criou
     public SecurityConfig(CustomOAuth2UserService customOAuth2UserService) {
         this.customOAuth2UserService = customOAuth2UserService;
     }
-
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/login/**", "/login/**").permitAll()
+                        .requestMatchers("/api/v1/auth/login/**", "/login/**", "/error").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
-                        // AQUI ESTÁ O SEGREDO: Dizemos ao Spring para usar o SEU serviço de usuários
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
                         )
+                        // Usamos o caminho absoluto começando com /
                         .defaultSuccessUrl("/api/v1/auth/me", true)
                 );
 
