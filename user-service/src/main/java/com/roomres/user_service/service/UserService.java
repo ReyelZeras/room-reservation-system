@@ -12,21 +12,27 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    public UserService(UserRepository userRepository){
+    public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    public Optional<User> findByProviderId(String providerId) {
+        return userRepository.findByProviderId(providerId);
+    }
+
     @Transactional
-    public User processOAuthUser(String login, String email, String name, String providerId){
+    public User processOAuthUser(String login, String email, String name, String providerId) {
         return userRepository.findByProviderId(providerId)
-                .map(existingUser ->{
-                    //atualiza campos se necessario
+                .map(existingUser -> {
                     existingUser.setName(name);
                     existingUser.setEmail(email);
                     return userRepository.save(existingUser);
                 })
                 .orElseGet(() -> {
-                    //Cria novo utilizador
                     User newUser = User.builder()
                             .username(login)
                             .email(email)
@@ -37,10 +43,6 @@ public class UserService {
                             .build();
                     return userRepository.save(newUser);
                 });
-    }
-
-    public Optional<User> findByProviderId(String providerId){
-        return userRepository.findByProviderId(providerId);
     }
 
 }
