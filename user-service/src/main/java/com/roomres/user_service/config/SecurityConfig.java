@@ -30,7 +30,13 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                         // Permite o fluxo de login e erros
-                        .requestMatchers("/login/**", "/oauth2/**", "/error").permitAll()
+                        .requestMatchers(
+                                "/login/**",
+                                "/oauth2/**",
+                                "/error",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html").permitAll()
                         // Qualquer outra rota da API exige autenticação
                         .anyRequest().authenticated()
                 )
