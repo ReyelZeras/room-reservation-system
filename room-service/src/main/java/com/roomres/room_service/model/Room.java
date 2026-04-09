@@ -2,7 +2,7 @@ package com.roomres.room_service.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.Id;
+import jakarta.persistence.Id;
 
 import java.util.UUID;
 
