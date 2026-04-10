@@ -23,11 +23,26 @@ public class RoomController {
 
     @PostMapping
     public ResponseEntity<Room> createRoom(@RequestBody Room room) {
-        return ResponseEntity.status(201).body(roomService.create(room));
+        return ResponseEntity.status(201).body(roomService.save(room));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Room> getRoomById(@PathVariable UUID id) {
-        return ResponseEntity.ok(roomService.findById(id));
+        // CORREÇÃO: Se não achar, retorna o status HTTP 404 (Not Found)
+        return roomService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // NOVO: Atualizar uma sala existente
+    @PutMapping("/{id}")
+    public ResponseEntity<Room> updateRoom(@PathVariable UUID id, @RequestBody Room updatedRoom) {
+        return roomService.findById(id).map(existing -> {
+            existing.setName(updatedRoom.getName());
+            existing.setCapacity(updatedRoom.getCapacity());
+            existing.setLocation(updatedRoom.getLocation());
+            existing.setStatus(updatedRoom.getStatus());
+            return ResponseEntity.ok(roomService.save(existing));
+        }).orElse(ResponseEntity.notFound().build());
     }
 }
