@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -18,12 +19,12 @@ public class RoomService {
         return roomRepository.findAll();
     }
 
-    public Room findById(UUID id) {
-        return roomRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Sala não encontrada"));
+    // CORREÇÃO: Agora retorna Optional em vez de lançar RuntimeException direto
+    public Optional<Room> findById(UUID id) {
+        return roomRepository.findById(id);
     }
 
-    public Room create(Room room) {
+    public Room save(Room room) {
         return roomRepository.save(room);
     }
 }
