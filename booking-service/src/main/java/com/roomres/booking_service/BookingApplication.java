@@ -6,10 +6,10 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication
 @EnableFeignClients
-public class ReservationApplication {
+public class BookingApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(ReservationApplication.class, args);
+		SpringApplication.run(BookingApplication.class, args);
 	}
 
 }

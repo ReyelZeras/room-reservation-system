@@ -2,8 +2,6 @@ package com.roomres.room_service.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import jakarta.persistence.Id;
-
 import java.util.UUID;
 
 @Entity
@@ -15,7 +13,7 @@ import java.util.UUID;
 @Builder
 public class Room {
 
-    @Id
+    @Id // Como removemos a importação errada, ele vai pegar o @Id do jakarta.persistence.*
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 

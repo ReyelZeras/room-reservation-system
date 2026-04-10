@@ -21,7 +21,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService; // Precisamos de um UserDetailsService
+    private final UserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(
@@ -34,18 +34,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String userEmail;
 
+        // Se não houver cabeçalho ou não for Bearer, apenas continua o fluxo.
+        // O Spring Security decidirá se a rota exige autenticação ou não depois.
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7);
         try {
+            jwt = authHeader.substring(7);
+
+            // Validação básica do formato do JWT para evitar o erro de "found 0 periods"
+            if (jwt.chars().filter(ch -> ch == '.').count() != 2) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             userEmail = jwtService.extractUsername(jwt);
 
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-
                 if (jwtService.isTokenValid(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
@@ -57,8 +65,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            // Se o token for inválido, apenas loga e deixa o Security bloquear a requisição depois
-            logger.error("Token JWT inválido: " + e.getMessage());
+            // Em caso de erro (token expirado, malformado, etc), não interrompemos o filtro.
+            // Apenas deixamos passar sem autenticar o contexto.
+            logger.error("Erro na autenticação JWT: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);
