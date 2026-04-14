@@ -12,9 +12,9 @@ public class OpenApiConfig {
     @Bean
     public OpenAPI customOpenApi(){
         return new OpenAPI().info(new Info()
-                .title("API de Reserva de Salas")
+                .title("Booking Service API")
                 .version("1.0")
-                .description("Sistema para gerenciamento e reserva de salas.")
+                .description("API central (Maestro) responsável por orquestrar e gerenciar as reservas de salas.")
                 .license(new License()
                         .name("Apache 2.0")
                         .url("http://springdoc.org"))
