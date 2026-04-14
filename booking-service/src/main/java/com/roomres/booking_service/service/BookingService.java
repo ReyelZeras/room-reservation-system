@@ -1,4 +1,3 @@
-// ... (mantenha os imports iguais aos de antes) ...
 package com.roomres.booking_service.service;
 
 import com.roomres.booking_service.client.RoomClient;
@@ -9,15 +8,19 @@ import com.roomres.booking_service.exception.BusinessException;
 import com.roomres.booking_service.exception.NotFoundException;
 import com.roomres.booking_service.model.Booking;
 import com.roomres.booking_service.model.BookingStatus;
+import com.roomres.booking_service.publisher.BookingEventPublisher;
 import com.roomres.booking_service.repository.BookingRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BookingService {
@@ -25,26 +28,31 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final RoomClient roomClient;
     private final UserClient userClient;
+    private final BookingEventPublisher eventPublisher;
 
+    @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO dto) {
+        // 1. Validação de Datas
         if (dto.getStartTime().isAfter(dto.getEndTime()) || dto.getStartTime().isEqual(dto.getEndTime())) {
             throw new BusinessException("Erro: O horário de início deve ser anterior ao horário de término.");
         }
 
+        // 2. Validação de Conflitos
         if (bookingRepository.existsConflictingBooking(dto.getRoomId(), dto.getStartTime(), dto.getEndTime())) {
             throw new BusinessException("Conflito: Esta sala já possui uma reserva confirmada neste horário.");
         }
 
+        // 3. Validação Externa: Room Service (via Feign)
         try {
             roomClient.getRoomById(dto.getRoomId());
         } catch (FeignException e) {
-            // AGORA VAI FUNCIONAR POIS O ROOM SERVICE RETORNA 404 CORRETAMENTE
             if (e.status() == 404) {
                 throw new BusinessException("Erro: A sala informada não existe no Room Service.");
             }
             throw new BusinessException("Erro: Room Service está offline ou indisponível.");
         }
 
+        // 4. Validação Externa: User Service (via Feign)
         try {
             userClient.getUserById(dto.getUserId());
         } catch (FeignException e) {
@@ -54,6 +62,7 @@ public class BookingService {
             throw new BusinessException("Erro: User Service está offline ou indisponível.");
         }
 
+        // 5. Persistência
         Booking booking = Booking.builder()
                 .id(UUID.randomUUID())
                 .roomId(dto.getRoomId())
@@ -64,7 +73,19 @@ public class BookingService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return mapToResponse(bookingRepository.save(booking));
+        Booking savedBooking = bookingRepository.save(booking);
+        BookingResponseDTO response = mapToResponse(savedBooking);
+
+        // 6. Mensageria Assíncrona (RabbitMQ)
+        try {
+            eventPublisher.sendReservationCreatedEvent(response);
+        } catch (Exception e) {
+            // Logamos o erro mas permitimos que a requisição finalize com sucesso,
+            // pois o dado já está salvo no banco.
+            log.error("Falha ao publicar evento no RabbitMQ para a reserva {}", savedBooking.getId(), e);
+        }
+
+        return response;
     }
 
     public List<BookingResponseDTO> getAll() {
@@ -76,7 +97,6 @@ public class BookingService {
                 .orElseThrow(() -> new NotFoundException("Reserva não encontrada.")));
     }
 
-    // NOVOS MÉTODOS
     public List<BookingResponseDTO> getByUserId(UUID userId) {
         return bookingRepository.findByUserId(userId).stream().map(this::mapToResponse).toList();
     }
@@ -85,6 +105,7 @@ public class BookingService {
         return bookingRepository.findByRoomId(roomId).stream().map(this::mapToResponse).toList();
     }
 
+    @Transactional
     public void cancelBooking(UUID id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Reserva não encontrada para cancelamento."));

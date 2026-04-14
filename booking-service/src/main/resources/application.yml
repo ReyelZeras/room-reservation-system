@@ -11,7 +11,7 @@ spring:
 
   datasource:
     # Nova porta 5443 para o booking_db isolado (Microsserviços Nível 2)
-    url: jdbc:postgresql://localhost:5443/booking_db
+    url: jdbc:postgresql://localhost:5440/booking_db
     username: booking_user
     password: booking_pass
     driver-class-name: org.postgresql.Driver
