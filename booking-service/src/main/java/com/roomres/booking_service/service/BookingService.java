@@ -32,17 +32,17 @@ public class BookingService {
 
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO dto) {
-        // 1. Validação de Datas
+        // Validação de horários lógicos
         if (dto.getStartTime().isAfter(dto.getEndTime()) || dto.getStartTime().isEqual(dto.getEndTime())) {
             throw new BusinessException("Erro: O horário de início deve ser anterior ao horário de término.");
         }
 
-        // 2. Validação de Conflitos
+        // Validação de regra de negócio: Sobreposição
         if (bookingRepository.existsConflictingBooking(dto.getRoomId(), dto.getStartTime(), dto.getEndTime())) {
             throw new BusinessException("Conflito: Esta sala já possui uma reserva confirmada neste horário.");
         }
 
-        // 3. Validação Externa: Room Service (via Feign)
+        // Validação Externa: Room Service (via Feign)
         try {
             roomClient.getRoomById(dto.getRoomId());
         } catch (FeignException e) {
@@ -52,7 +52,7 @@ public class BookingService {
             throw new BusinessException("Erro: Room Service está offline ou indisponível.");
         }
 
-        // 4. Validação Externa: User Service (via Feign)
+        // Validação Externa: User Service (via Feign)
         try {
             userClient.getUserById(dto.getUserId());
         } catch (FeignException e) {
@@ -62,7 +62,7 @@ public class BookingService {
             throw new BusinessException("Erro: User Service está offline ou indisponível.");
         }
 
-        // 5. Persistência
+        // Persistência
         Booking booking = Booking.builder()
                 .id(UUID.randomUUID())
                 .roomId(dto.getRoomId())
@@ -76,16 +76,38 @@ public class BookingService {
         Booking savedBooking = bookingRepository.save(booking);
         BookingResponseDTO response = mapToResponse(savedBooking);
 
-        // 6. Mensageria Assíncrona (RabbitMQ)
+        // Envio do Evento Assíncrono para o RabbitMQ
         try {
             eventPublisher.sendReservationCreatedEvent(response);
         } catch (Exception e) {
-            // Logamos o erro mas permitimos que a requisição finalize com sucesso,
-            // pois o dado já está salvo no banco.
-            log.error("Falha ao publicar evento no RabbitMQ para a reserva {}", savedBooking.getId(), e);
+            log.error("Erro ao enviar evento para o RabbitMQ: {}", e.getMessage());
         }
 
         return response;
+    }
+
+    // ADICIONADO: Reagendamento de Horário
+    @Transactional
+    public BookingResponseDTO rescheduleBooking(UUID bookingId, LocalDateTime newStart, LocalDateTime newEnd) {
+        if (newStart.isAfter(newEnd) || newStart.isEqual(newEnd)) {
+            throw new BusinessException("Erro: O horário de início deve ser anterior ao horário de término.");
+        }
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new NotFoundException("Reserva não encontrada."));
+
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            throw new BusinessException("Não é possível reagendar uma reserva cancelada.");
+        }
+
+        // Verifica conflitos IGNORANDO a reserva atual
+        if (bookingRepository.existsConflictingBookingExcludingId(booking.getRoomId(), newStart, newEnd, bookingId)) {
+            throw new BusinessException("Conflito: O novo horário entra em choque com outra reserva na mesma sala.");
+        }
+
+        booking.setStartTime(newStart);
+        booking.setEndTime(newEnd);
+        return mapToResponse(bookingRepository.save(booking));
     }
 
     public List<BookingResponseDTO> getAll() {
@@ -116,6 +138,15 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
+    }
+
+    // ADICIONADO: Exclusão permanente para fechar o CRUD
+    @Transactional
+    public void deleteBookingPermanently(UUID id) {
+        if (!bookingRepository.existsById(id)) {
+            throw new NotFoundException("Reserva não encontrada para exclusão.");
+        }
+        bookingRepository.deleteById(id);
     }
 
     private BookingResponseDTO mapToResponse(Booking b) {
