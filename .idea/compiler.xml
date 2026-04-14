@@ -8,6 +8,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="reservation" />
+        <module name="audit_service" />
         <module name="room-service" />
       </profile>
       <profile name="Annotation profile for user-service" enabled="true">
@@ -23,6 +24,7 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="audit_service" options="-parameters" />
       <module name="reservation" options="-parameters" />
       <module name="room-service" options="-parameters" />
       <module name="user-service" options="-parameters" />
