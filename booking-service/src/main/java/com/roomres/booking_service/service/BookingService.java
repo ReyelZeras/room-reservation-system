@@ -9,8 +9,8 @@ import com.roomres.booking_service.exception.NotFoundException;
 import com.roomres.booking_service.model.Booking;
 import com.roomres.booking_service.model.BookingStatus;
 import com.roomres.booking_service.publisher.BookingEventPublisher;
+import com.roomres.booking_service.publisher.AuditPublisher;
 import com.roomres.booking_service.repository.BookingRepository;
-import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -29,40 +30,48 @@ public class BookingService {
     private final RoomClient roomClient;
     private final UserClient userClient;
     private final BookingEventPublisher eventPublisher;
+    private final AuditPublisher auditPublisher;
+
+    @Transactional(readOnly = true)
+    public List<BookingResponseDTO> getAll() {
+        return bookingRepository.findAll().stream()
+                .map(BookingResponseDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public BookingResponseDTO getById(UUID id) {
+        return bookingRepository.findById(id)
+                .map(BookingResponseDTO::new)
+                .orElseThrow(() -> new NotFoundException("Reserva não encontrada."));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingResponseDTO> getByUserId(UUID userId) {
+        return bookingRepository.findByUserId(userId).stream()
+                .map(BookingResponseDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingResponseDTO> getByRoomId(UUID roomId) {
+        return bookingRepository.findByRoomId(roomId).stream()
+                .map(BookingResponseDTO::new)
+                .collect(Collectors.toList());
+    }
 
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO dto) {
-        // Validação de horários lógicos
-        if (dto.getStartTime().isAfter(dto.getEndTime()) || dto.getStartTime().isEqual(dto.getEndTime())) {
-            throw new BusinessException("Erro: O horário de início deve ser anterior ao horário de término.");
-        }
+        log.info("Iniciando criação de reserva...");
+        validateDates(dto.getStartTime(), dto.getEndTime());
 
-        // Validação de regra de negócio: Sobreposição
+        // Usa o método do repositório para verificar conflitos
         if (bookingRepository.existsConflictingBooking(dto.getRoomId(), dto.getStartTime(), dto.getEndTime())) {
-            throw new BusinessException("Conflito: Esta sala já possui uma reserva confirmada neste horário.");
+            throw new BusinessException("A sala já está reservada para o período selecionado.");
         }
 
-        // Validação Externa: Room Service (via Feign)
-        try {
-            roomClient.getRoomById(dto.getRoomId());
-        } catch (FeignException e) {
-            if (e.status() == 404) {
-                throw new BusinessException("Erro: A sala informada não existe no Room Service.");
-            }
-            throw new BusinessException("Erro: Room Service está offline ou indisponível.");
-        }
+        validateRoomAndUser(dto.getRoomId(), dto.getUserId());
 
-        // Validação Externa: User Service (via Feign)
-        try {
-            userClient.getUserById(dto.getUserId());
-        } catch (FeignException e) {
-            if (e.status() == 404) {
-                throw new BusinessException("Erro: O usuário informado não existe no User Service.");
-            }
-            throw new BusinessException("Erro: User Service está offline ou indisponível.");
-        }
-
-        // Persistência
         Booking booking = Booking.builder()
                 .id(UUID.randomUUID())
                 .roomId(dto.getRoomId())
@@ -73,83 +82,112 @@ public class BookingService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        Booking savedBooking = bookingRepository.save(booking);
-        BookingResponseDTO response = mapToResponse(savedBooking);
+        Booking saved = bookingRepository.save(booking);
+        BookingResponseDTO response = new BookingResponseDTO(saved);
 
-        // Envio do Evento Assíncrono para o RabbitMQ
-        try {
-            eventPublisher.sendReservationCreatedEvent(response);
-        } catch (Exception e) {
-            log.error("Erro ao enviar evento para o RabbitMQ: {}", e.getMessage());
-        }
-
+        dispatchEvents(response, "RESERVA_CRIADA");
         return response;
     }
 
-    // ADICIONADO: Reagendamento de Horário
     @Transactional
-    public BookingResponseDTO rescheduleBooking(UUID bookingId, LocalDateTime newStart, LocalDateTime newEnd) {
-        if (newStart.isAfter(newEnd) || newStart.isEqual(newEnd)) {
-            throw new BusinessException("Erro: O horário de início deve ser anterior ao horário de término.");
-        }
-
-        Booking booking = bookingRepository.findById(bookingId)
+    public BookingResponseDTO rescheduleBooking(UUID id, LocalDateTime newStart, LocalDateTime newEnd) {
+        Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Reserva não encontrada."));
 
-        if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new BusinessException("Não é possível reagendar uma reserva cancelada.");
-        }
+        validateDates(newStart, newEnd);
 
-        // Verifica conflitos IGNORANDO a reserva atual
-        if (bookingRepository.existsConflictingBookingExcludingId(booking.getRoomId(), newStart, newEnd, bookingId)) {
-            throw new BusinessException("Conflito: O novo horário entra em choque com outra reserva na mesma sala.");
+        // AQUI: Usa o novo método do repositório que ignora o ID da reserva atual
+        boolean conflict = bookingRepository.existsConflictingBookingExcludingId(
+                booking.getRoomId(), newStart, newEnd, id);
+
+        if (conflict) {
+            throw new BusinessException("Conflito: O novo horário escolhido já está ocupado por outra reserva.");
         }
 
         booking.setStartTime(newStart);
         booking.setEndTime(newEnd);
-        return mapToResponse(bookingRepository.save(booking));
-    }
 
-    public List<BookingResponseDTO> getAll() {
-        return bookingRepository.findAll().stream().map(this::mapToResponse).toList();
-    }
+        Booking updated = bookingRepository.save(booking);
+        BookingResponseDTO response = new BookingResponseDTO(updated);
 
-    public BookingResponseDTO getById(UUID id) {
-        return mapToResponse(bookingRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Reserva não encontrada.")));
-    }
-
-    public List<BookingResponseDTO> getByUserId(UUID userId) {
-        return bookingRepository.findByUserId(userId).stream().map(this::mapToResponse).toList();
-    }
-
-    public List<BookingResponseDTO> getByRoomId(UUID roomId) {
-        return bookingRepository.findByRoomId(roomId).stream().map(this::mapToResponse).toList();
+        dispatchEvents(response, "RESERVA_REAGENDADA");
+        return response;
     }
 
     @Transactional
     public void cancelBooking(UUID id) {
         Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Reserva não encontrada para cancelamento."));
-
-        if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new BusinessException("A reserva já se encontra cancelada.");
-        }
+                .orElseThrow(() -> new NotFoundException("Reserva não encontrada."));
 
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
+
+        try {
+            auditPublisher.sendAuditEvent("RESERVA_CANCELADA", "ID: " + id);
+        } catch (Exception e) {
+            log.error("Erro ao enviar auditoria de cancelamento: {}", e.getMessage());
+        }
     }
 
-    // ADICIONADO: Exclusão permanente para fechar o CRUD
     @Transactional
     public void deleteBookingPermanently(UUID id) {
         if (!bookingRepository.existsById(id)) {
-            throw new NotFoundException("Reserva não encontrada para exclusão.");
+            throw new NotFoundException("Reserva não encontrada.");
         }
         bookingRepository.deleteById(id);
+
+        try {
+            auditPublisher.sendAuditEvent("RESERVA_EXCLUIDA", "ID: " + id);
+        } catch (Exception e) {
+            log.error("Erro ao enviar auditoria de exclusão: {}", e.getMessage());
+        }
     }
 
-    private BookingResponseDTO mapToResponse(Booking b) {
-        return new BookingResponseDTO(b);
+    // --- MÉTODOS DE APOIO ---
+
+    private void validateDates(LocalDateTime start, LocalDateTime end) {
+        if (start == null || end == null) {
+            throw new BusinessException("Datas de início e fim são obrigatórias.");
+        }
+        if (start.isAfter(end) || start.isEqual(end)) {
+            throw new BusinessException("A data de início deve ser anterior à data de fim.");
+        }
+        if (start.isBefore(LocalDateTime.now())) {
+            throw new BusinessException("Não é permitido agendar reservas no passado.");
+        }
+    }
+
+    private void validateRoomAndUser(UUID roomId, UUID userId) {
+        try {
+            roomClient.getRoomById(roomId);
+        } catch (Exception e) {
+            throw new BusinessException("Sala não encontrada ou serviço de salas fora do ar.");
+        }
+        try {
+            userClient.getUserById(userId);
+        } catch (Exception e) {
+            throw new BusinessException("Usuário não encontrado ou serviço de usuários fora do ar.");
+        }
+    }
+
+    private void dispatchEvents(BookingResponseDTO response, String action) {
+        // Envio para RabbitMQ (Notificação)
+        try {
+            eventPublisher.sendReservationCreatedEvent(response);
+        } catch (Exception e) {
+            log.error("Falha ao comunicar com RabbitMQ: {}", e.getMessage());
+        }
+
+        // Envio para Kafka (Auditoria Detalhada)
+        try {
+            // Voltando a incluir o RoomId na mensagem para o banco de auditoria
+            String details = String.format("Acao: %s | Reserva ID: %s | Sala ID: %s",
+                    action, response.getId(), response.getRoomId());
+
+            auditPublisher.sendAuditEvent(action, details);
+            log.info("Log enviado ao Kafka: {}", details);
+        } catch (Exception e) {
+            log.error("Falha ao comunicar com Kafka: {}", e.getMessage());
+        }
     }
 }
