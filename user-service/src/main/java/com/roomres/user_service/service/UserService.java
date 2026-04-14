@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,13 +16,30 @@ public class UserService {
 
     private final UserRepository userRepository;
 
+    // ADICIONADO: Listar todos os usuários para o CRUD
+    public List<User> findAll() {
+        return userRepository.findAll();
+    }
+
     public Optional<User> findById(UUID id) {
         return userRepository.findById(id);
     }
 
-    // ADICIONADO: Necessário para o AuthController (getMyProfile)
+    // Necessário para o AuthController (getMyProfile)
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
+    }
+
+    // ADICIONADO: Método genérico para salvar atualizações do CRUD
+    @Transactional
+    public User save(User user) {
+        return userRepository.save(user);
+    }
+
+    // ADICIONADO: Método para deletar um usuário
+    @Transactional
+    public void deleteById(UUID id) {
+        userRepository.deleteById(id);
     }
 
     @Transactional
@@ -29,18 +47,17 @@ public class UserService {
         return userRepository.findByProviderId(providerId)
                 .map(user -> {
                     user.setName(name);
-                    user.setEmail(email);
                     return userRepository.save(user);
                 })
                 .orElseGet(() -> {
-                    User newUser = new User();
-                    newUser.setId(UUID.randomUUID());
-                    newUser.setUsername(login);
-                    newUser.setEmail(email);
-                    newUser.setName(name);
-                    newUser.setProviderId(providerId);
-                    newUser.setProvider("github");
-                    newUser.setRole("USER");
+                    User newUser = User.builder()
+                            .username(login)
+                            .email(email)
+                            .name(name)
+                            .provider("github")
+                            .providerId(providerId)
+                            .role("USER")
+                            .build();
                     return userRepository.save(newUser);
                 });
     }
