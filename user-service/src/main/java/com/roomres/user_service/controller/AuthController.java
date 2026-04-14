@@ -1,39 +1,26 @@
 package com.roomres.user_service.controller;
 
-import com.roomres.user_service.dto.UserDTO;
-import com.roomres.user_service.service.UserService;
-import org.springframework.http.ResponseEntity;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Objects;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@Tag(name = "Authentication", description = "Endpoints para gestão de sessão e login social")
 public class AuthController {
 
-    private final UserService userService;
-
-    public AuthController(UserService userService) {
-        this.userService = userService;
-    }
-
-    @GetMapping("/me")
-    public ResponseEntity<UserDTO> getMyProfile(@AuthenticationPrincipal UserDetails principal) {
-
+    @Operation(summary = "Dados do usuário logado", description = "Retorna as informações do perfil obtidas do Provedor (ex: GitHub).")
+    @GetMapping("/user")
+    public Map<String, Object> user(@AuthenticationPrincipal OAuth2User principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).build();
+            return Map.of("error", "Usuário não autenticado. Faça login via /oauth2/authorization/github");
         }
-
-        // Com o JWT, o "username" do principal agora é o e-mail do usuário
-        String email = principal.getUsername();
-
-        return userService.findByEmail(email)
-                .map(user -> ResponseEntity.ok(new UserDTO(user)))
-                .orElse(ResponseEntity.notFound().build());
+        return principal.getAttributes();
     }
 }

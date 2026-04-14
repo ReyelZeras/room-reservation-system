@@ -20,7 +20,16 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             @Param("endTime") LocalDateTime endTime
     );
 
-    // NOVAS QUERIES PARA BUSCA ESPECÍFICA
+    // ADICIONADO: Valida conflitos ignorando a própria reserva (Essencial para o Update/Reschedule)
+    @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END FROM Booking b WHERE b.roomId = :roomId AND b.status = 'CONFIRMED' AND b.id <> :bookingId AND (b.startTime < :endTime AND b.endTime > :startTime)")
+    boolean existsConflictingBookingExcludingId(
+            @Param("roomId") UUID roomId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime,
+            @Param("bookingId") UUID bookingId
+    );
+
+    // QUERIES PARA BUSCA ESPECÍFICA
     List<Booking> findByUserId(UUID userId);
     List<Booking> findByRoomId(UUID roomId);
 }
