@@ -15,9 +15,14 @@ spring:
   flyway:
     enabled: true
 
-# Swagger Config
 springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+# --- NOVO: CONFIGURAÇÃO DO EUREKA CLIENT ---
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
