@@ -23,3 +23,9 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+  # --- NOVO: CONFIGURAÇÃO DO EUREKA CLIENT ---
+  eureka:
+    client:
+      service-url:
+        defaultZone: http://localhost:8761/eureka/
