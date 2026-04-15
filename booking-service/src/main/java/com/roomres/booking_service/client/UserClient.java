@@ -5,10 +5,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import java.util.UUID;
 
-// Aponta para o User Service na porta 8081
-@FeignClient(name = "user-service", url = "http://localhost:8081/api/v1/users")
+// Removida a URL fixa. O nome "user-service" será resolvido pelo Eureka/LoadBalancer
+@FeignClient(name = "user-service")
 public interface UserClient {
-
-    @GetMapping("/{id}")
+    @GetMapping("/api/v1/users/{id}")
     Object getUserById(@PathVariable("id") UUID id);
 }
