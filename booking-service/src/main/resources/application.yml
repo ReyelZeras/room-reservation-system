@@ -42,3 +42,9 @@ logging:
     org.springframework.web: INFO
     org.hibernate.SQL: DEBUG
     com.roomres.booking_service: DEBUG
+
+# --- NOVO: CONFIGURAÇÃO DO EUREKA CLIENT ---
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
