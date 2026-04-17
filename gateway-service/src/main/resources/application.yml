@@ -11,13 +11,13 @@ spring:
         locator:
           enabled: true
       routes:
-        # A Rota de Usuários/Auth é a única que passa direto (para permitir o Login)
+        # Rota de Usuários/Auth (Acesso Público para Login)
         - id: user-service-route
           uri: lb://user-service
           predicates:
             - Path=/api/v1/auth/**, /api/v1/users/**
 
-        # Rotas Protegidas - O Filtro de Autenticação vai barrá-las se não houver Token
+        # Rota de Salas (Protegida pelo Filtro JWT)
         - id: room-service-route
           uri: lb://room-service
           predicates:
@@ -25,6 +25,7 @@ spring:
           filters:
             - AuthenticationFilter
 
+        # Rota de Reservas (Protegida pelo Filtro JWT)
         - id: booking-service-route
           uri: lb://booking-service
           predicates:
@@ -32,16 +33,24 @@ spring:
           filters:
             - AuthenticationFilter
 
+        # NOVO: Rota de Notificações (SSE)
+        # Não colocamos o AuthenticationFilter aqui porque o validador de rotas
+        # já vai pular a validação para o /stream.
+        - id: notification-service-route
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/v1/notifications/**
+
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
 
-# Configuração de Observabilidade e Tracing
+# Configurações de Observabilidade (Zipkin)
 management:
   tracing:
     sampling:
-      probability: 1.0 # 1.0 significa 100% (Rastreia TODAS as requisições). Em prod, seria 0.1 (10%) para poupar recursos.
+      probability: 1.0
   zipkin:
     tracing:
       endpoint: "http://localhost:9411/api/v2/spans"
