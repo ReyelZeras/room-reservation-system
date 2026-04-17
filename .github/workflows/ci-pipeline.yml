@@ -1,0 +1,40 @@
+name: Integracao Continua - Microsservicos
+
+# O pipeline vai rodar sempre que houver push ou pull request para a branch main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    # A Matrix é uma magia do GitHub Actions: ele vai criar 7 "computadores" paralelos,
+    # um para testar cada microsserviço nosso simultaneamente!
+    strategy:
+      matrix:
+        service: 
+          - user-service
+          - room-service
+          - booking-service
+          - audit-service
+          - notification-service
+          - discovery-service
+          - gateway-service
+
+    steps:
+    - name: Baixar o código do repositório
+      uses: actions/checkout@v4
+
+    - name: Configurar o Java 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven # Faz cache das bibliotecas para rodar mais rápido nas próximas vezes
+
+    - name: Build e Testes Automáticos (${{ matrix.service }})
+      working-directory: ./${{ matrix.service }}
+      run: mvn clean verify
