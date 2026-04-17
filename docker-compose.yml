@@ -1,7 +1,5 @@
 version: '3.8'
-
 services:
-  # Bancos de dados existentes
   user-db:
     image: postgres:15-alpine
     container_name: user-db
@@ -32,7 +30,6 @@ services:
     ports:
       - "5440:5432"
 
-  # Banco de Dados para Auditoria (NOVO)
   audit-db:
     image: postgres:15-alpine
     container_name: audit-db
@@ -43,7 +40,6 @@ services:
     ports:
       - "5443:5432"
 
-  # Mensageria: RabbitMQ (Notificações)
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq
@@ -51,7 +47,6 @@ services:
       - "5672:5672"
       - "15672:15672"
 
-  # Infraestrutura KAFKA (Auditoria)
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     container_name: zookeeper
@@ -77,4 +72,12 @@ services:
     container_name: room-reservation-redis
     ports:
       - "6379:6379"
+    restart: always
+
+  # NOVO: Servidor do Zipkin
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - "9411:9411"
     restart: always

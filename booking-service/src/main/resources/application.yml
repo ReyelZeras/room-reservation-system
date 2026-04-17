@@ -66,3 +66,12 @@ resilience4j:
         # Se 50% das chamadas falharem, o circuito abre
         failureRateThreshold: 50
         eventConsumerBufferSize: 10
+
+# Configuração de Observabilidade e Tracing
+management:
+  tracing:
+    sampling:
+      probability: 1.0 # 1.0 significa 100% (Rastreia TODAS as requisições). Em prod, seria 0.1 (10%) para poupar recursos.
+  zipkin:
+    tracing:
+      endpoint: "http://localhost:9411/api/v2/spans"
