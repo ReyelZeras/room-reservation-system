@@ -3,8 +3,9 @@ package com.roomres.room_service.service;
 import com.roomres.room_service.model.Room;
 import com.roomres.room_service.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,25 +15,28 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RoomService {
 
-    private final RoomRepository roomRepository;
+    private final RoomRepository repository;
 
+    // Quando este método for chamado, o Spring olha primeiro no Redis (chave "rooms")
+    @Cacheable(value = "rooms", key = "'all-rooms'")
     public List<Room> findAll() {
-        return roomRepository.findAll();
+        System.out.println("BUSCANDO NO BANCO DE DADOS (POSTGRES)...");
+        return repository.findAll();
     }
 
-    // Agora retorna Optional em vez de lançar RuntimeException direto
+    @Cacheable(value = "rooms", key = "#id")
     public Optional<Room> findById(UUID id) {
-        return roomRepository.findById(id);
+        return repository.findById(id);
     }
 
-    @Transactional
+    // Sempre que salvar ou deletar, limpamos o cache para não servir dados velhos
+    @CacheEvict(value = "rooms", allEntries = true)
     public Room save(Room room) {
-        return roomRepository.save(room);
+        return repository.save(room);
     }
 
-    // ADICIONADO: Deleção de sala para fechar o CRUD
-    @Transactional
+    @CacheEvict(value = "rooms", allEntries = true)
     public void deleteById(UUID id) {
-        roomRepository.deleteById(id);
+        repository.deleteById(id);
     }
 }
