@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     
     strategy:
-      fail-fast: false # NOVO: Se um serviço falhar, NÃO cancela os outros! Testa todos.
+      fail-fast: false
       matrix:
         service: 
           - user-service
           - room-service
           - booking-service
-          - audit-service
+          - audit-service # Ajustado
           - notification-service
           - discovery-service
           - gateway-service
@@ -33,19 +33,21 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
-    # NOVO: Sobe toda a nossa infraestrutura usando o arquivo docker-compose.yml da raiz
     - name: Subir Infraestrutura de Apoio (Docker Compose)
       run: docker compose up -d
 
-    # NOVO: Dá 20 segundos de fôlego para o Postgres, Kafka e RabbitMQ iniciarem completamente
-    - name: Aguardar prontidão dos bancos e mensageria
-      run: sleep 20
+    - name: Aguardar prontidão dos serviços
+      run: sleep 30 # Aumentei para 30s para garantir que o Kafka/Postgres subam
 
     - name: Build e Testes Automáticos (${{ matrix.service }})
       working-directory: ./${{ matrix.service }}
-      run: mvn clean verify
-
-    # NOVO: Limpa a casa depois (roda sempre, mesmo se a etapa de testes der erro)
+      # Adicionamos flags para desativar Eureka e Config Client durante os testes de CI
+      run: |
+        mvn clean verify \
+        -Dspring.cloud.discovery.enabled=false \
+        -Dspring.cloud.config.enabled=false \
+        -Dspring.cloud.service-registry.auto-registration.enabled=false
+      
     - name: Desligar Infraestrutura
       if: always()
       run: docker compose down
