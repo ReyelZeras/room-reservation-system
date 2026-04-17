@@ -12,11 +12,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -32,8 +27,14 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Libera TUDO que é API e Login para não travar o desenvolvimento
-                        .requestMatchers("/api/v1/users/**", "/login/**", "/oauth2/**", "/error").permitAll()
+                        // AQUI ESTÁ A MÁGICA: Adicionamos o /api/v1/auth/** na lista de permitAll
+                        .requestMatchers(
+                                "/api/v1/users/**",
+                                "/login/**",
+                                "/oauth2/**",
+                                "/error",
+                                "/api/v1/auth/**" // <-- Endpoint do nosso AuthController liberado!
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
@@ -41,7 +42,6 @@ public class SecurityConfig {
                         .successHandler(oAuth2AuthenticationSuccessHandler)
                 )
                 .sessionManagement(session -> session
-                        // Mudamos para IF_REQUIRED para o navegador conseguir manter a sessão após o login social
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

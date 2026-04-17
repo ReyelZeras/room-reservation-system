@@ -31,7 +31,7 @@
       <module name="audit-service" options="-parameters" />
       <module name="audit_service" options="-parameters" />
       <module name="discovery-service" options="-parameters" />
-      <module name="gateway-service" options="" />
+      <module name="gateway-service" options="-parameters" />
       <module name="notification-service" options="-parameters" />
       <module name="reservation" options="-parameters" />
       <module name="room-service" options="-parameters" />
