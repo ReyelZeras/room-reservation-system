@@ -8,9 +8,10 @@ import com.roomres.booking_service.exception.BusinessException;
 import com.roomres.booking_service.exception.NotFoundException;
 import com.roomres.booking_service.model.Booking;
 import com.roomres.booking_service.model.BookingStatus;
-import com.roomres.booking_service.publisher.BookingEventPublisher;
 import com.roomres.booking_service.publisher.AuditPublisher;
+import com.roomres.booking_service.publisher.BookingEventPublisher;
 import com.roomres.booking_service.repository.BookingRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,33 +35,28 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getAll() {
-        return bookingRepository.findAll().stream()
-                .map(BookingResponseDTO::new)
-                .collect(Collectors.toList());
+        return bookingRepository.findAll().stream().map(BookingResponseDTO::new).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public BookingResponseDTO getById(UUID id) {
-        return bookingRepository.findById(id)
-                .map(BookingResponseDTO::new)
+        Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Reserva não encontrada."));
+        return new BookingResponseDTO(booking);
     }
 
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getByUserId(UUID userId) {
-        return bookingRepository.findByUserId(userId).stream()
-                .map(BookingResponseDTO::new)
-                .collect(Collectors.toList());
+        return bookingRepository.findByUserId(userId).stream().map(BookingResponseDTO::new).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getByRoomId(UUID roomId) {
-        return bookingRepository.findByRoomId(roomId).stream()
-                .map(BookingResponseDTO::new)
-                .collect(Collectors.toList());
+        return bookingRepository.findByRoomId(roomId).stream().map(BookingResponseDTO::new).collect(Collectors.toList());
     }
 
     @Transactional
+    @CircuitBreaker(name = "roomServiceCB", fallbackMethod = "fallbackCreateBooking")
     public BookingResponseDTO createBooking(BookingRequestDTO dto) {
         log.info("Iniciando criação de reserva...");
         validateDates(dto.getStartTime(), dto.getEndTime());
@@ -70,6 +66,7 @@ public class BookingService {
             throw new BusinessException("A sala já está reservada para o período selecionado.");
         }
 
+        // Valida nos outros microsserviços via Feign Client (ponto monitorado pelo Circuit Breaker)
         validateRoomAndUser(dto.getRoomId(), dto.getUserId());
 
         Booking booking = Booking.builder()
@@ -79,14 +76,20 @@ public class BookingService {
                 .startTime(dto.getStartTime())
                 .endTime(dto.getEndTime())
                 .status(BookingStatus.CONFIRMED)
-                .createdAt(LocalDateTime.now())
                 .build();
 
         Booking saved = bookingRepository.save(booking);
         BookingResponseDTO response = new BookingResponseDTO(saved);
 
         dispatchEvents(response, "RESERVA_CRIADA");
+
         return response;
+    }
+
+    // MÉTODO DE FALLBACK: Executado se o 'validateRoomAndUser' falhar por indisponibilidade de rede
+    public BookingResponseDTO fallbackCreateBooking(BookingRequestDTO dto, Throwable t) {
+        log.error("CIRCUIT BREAKER ATIVADO! Motivo da falha: {}", t.getMessage());
+        throw new BusinessException("Os sistemas de validação de salas/usuários estão temporariamente indisponíveis. Tente novamente em instantes.");
     }
 
     @Transactional
@@ -96,7 +99,6 @@ public class BookingService {
 
         validateDates(newStart, newEnd);
 
-        // AQUI: Usa o novo método do repositório que ignora o ID da reserva atual
         boolean conflict = bookingRepository.existsConflictingBookingExcludingId(
                 booking.getRoomId(), newStart, newEnd, id);
 
@@ -111,6 +113,7 @@ public class BookingService {
         BookingResponseDTO response = new BookingResponseDTO(updated);
 
         dispatchEvents(response, "RESERVA_REAGENDADA");
+
         return response;
     }
 
@@ -120,24 +123,20 @@ public class BookingService {
                 .orElseThrow(() -> new NotFoundException("Reserva não encontrada."));
 
         booking.setStatus(BookingStatus.CANCELLED);
-        bookingRepository.save(booking);
+        Booking updated = bookingRepository.save(booking);
 
-        try {
-            auditPublisher.sendAuditEvent("RESERVA_CANCELADA", "ID: " + id);
-        } catch (Exception e) {
-            log.error("Erro ao enviar auditoria de cancelamento: {}", e.getMessage());
-        }
+        dispatchEvents(new BookingResponseDTO(updated), "RESERVA_CANCELADA");
     }
 
     @Transactional
     public void deleteBookingPermanently(UUID id) {
-        if (!bookingRepository.existsById(id)) {
-            throw new NotFoundException("Reserva não encontrada.");
-        }
-        bookingRepository.deleteById(id);
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Reserva não encontrada."));
+
+        bookingRepository.delete(booking);
 
         try {
-            auditPublisher.sendAuditEvent("RESERVA_EXCLUIDA", "ID: " + id);
+            auditPublisher.sendAuditEvent("RESERVA_DELETADA", "Reserva ID: " + id + " foi apagada permanentemente.");
         } catch (Exception e) {
             log.error("Erro ao enviar auditoria de exclusão: {}", e.getMessage());
         }
@@ -171,19 +170,15 @@ public class BookingService {
     }
 
     private void dispatchEvents(BookingResponseDTO response, String action) {
-        // Envio para RabbitMQ (Notificação)
         try {
             eventPublisher.sendReservationCreatedEvent(response);
         } catch (Exception e) {
-            log.error("Falha ao comunicar com RabbitMQ: {}", e.getMessage());
+            log.error("Erro ao publicar evento no RabbitMQ: {}", e.getMessage());
         }
 
-        // Envio para Kafka (Auditoria Detalhada)
         try {
-            // Voltando a incluir o RoomId na mensagem para o banco de auditoria
-            String details = String.format("Acao: %s | Reserva ID: %s | Sala ID: %s",
-                    action, response.getId(), response.getRoomId());
-
+            String details = String.format("Reserva ID: %s | Sala ID: %s | Usuário ID: %s",
+                    response.getId(), response.getRoomId(), response.getUserId());
             auditPublisher.sendAuditEvent(action, details);
             log.info("Log enviado ao Kafka: {}", details);
         } catch (Exception e) {
