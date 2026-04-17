@@ -1,6 +1,5 @@
 name: Integracao Continua - Microsservicos
 
-# O pipeline vai rodar sempre que houver push ou pull request para a branch main
 on:
   push:
     branches: [ "main" ]
@@ -11,9 +10,8 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     
-    # A Matrix é uma magia do GitHub Actions: ele vai criar 7 "computadores" paralelos,
-    # um para testar cada microsserviço nosso simultaneamente!
     strategy:
+      fail-fast: false # NOVO: Se um serviço falhar, NÃO cancela os outros! Testa todos.
       matrix:
         service: 
           - user-service
@@ -33,8 +31,21 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: maven # Faz cache das bibliotecas para rodar mais rápido nas próximas vezes
+        cache: maven
+
+    # NOVO: Sobe toda a nossa infraestrutura usando o arquivo docker-compose.yml da raiz
+    - name: Subir Infraestrutura de Apoio (Docker Compose)
+      run: docker compose up -d
+
+    # NOVO: Dá 20 segundos de fôlego para o Postgres, Kafka e RabbitMQ iniciarem completamente
+    - name: Aguardar prontidão dos bancos e mensageria
+      run: sleep 20
 
     - name: Build e Testes Automáticos (${{ matrix.service }})
       working-directory: ./${{ matrix.service }}
       run: mvn clean verify
+
+    # NOVO: Limpa a casa depois (roda sempre, mesmo se a etapa de testes der erro)
+    - name: Desligar Infraestrutura
+      if: always()
+      run: docker compose down
