@@ -48,3 +48,21 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      roomServiceCB:
+        registerHealthIndicator: true
+        # Janela de 10 chamadas para análise
+        slidingWindowSize: 10
+        # Permite 3 chamadas de teste quando o circuito está "Meio Aberto"
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowType: COUNT_BASED
+        # Mínimo de chamadas antes de calcular a taxa de falha
+        minimumNumberOfCalls: 5
+        # Tempo que o circuito fica "Aberto" antes de tentar recuperar (5 segundos)
+        waitDurationInOpenState: 5s
+        # Se 50% das chamadas falharem, o circuito abre
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
