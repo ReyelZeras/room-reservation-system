@@ -1,5 +1,5 @@
 server:
-  port: 8080 # O único IP/Porta que o mundo externo verá
+  port: 8080
 
 spring:
   application:
@@ -9,24 +9,28 @@ spring:
     gateway:
       discovery:
         locator:
-          enabled: true # Permite encontrar serviços pelo nome no Eureka
-
-      # MAPEAMENTO DE ROTAS
+          enabled: true
       routes:
+        # A Rota de Usuários/Auth é a única que passa direto (para permitir o Login)
         - id: user-service-route
-          uri: lb://user-service # lb = Load Balancer (usa o nome no Eureka)
+          uri: lb://user-service
           predicates:
             - Path=/api/v1/auth/**, /api/v1/users/**
 
+        # Rotas Protegidas - O Filtro de Autenticação vai barrá-las se não houver Token
         - id: room-service-route
           uri: lb://room-service
           predicates:
             - Path=/api/v1/rooms/**
+          filters:
+            - AuthenticationFilter
 
         - id: booking-service-route
           uri: lb://booking-service
           predicates:
             - Path=/api/v1/bookings/**
+          filters:
+            - AuthenticationFilter
 
 eureka:
   client:
