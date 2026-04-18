@@ -19,26 +19,24 @@ public class NotificationController {
 
     private final NotificationSink notificationSink;
 
-    // TEXT_EVENT_STREAM_VALUE é o que avisa ao navegador: "Não feche a conexão, é um stream!"
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<BookingNotificationDTO>> streamNotifications() {
 
-        // HEARTBEAT (Ping): Manda um evento vazio a cada 15s apenas para a conexão não cair por inatividade
-        Flux<ServerSentEvent<BookingNotificationDTO>> ping = Flux.interval(Duration.ofSeconds(15))
+        // CORREÇÃO: O primeiro ping vai em ZERO segundos, depois a cada 15s.
+        // Isso impede que o Gateway ache que a conexão morreu por inatividade inicial.
+        Flux<ServerSentEvent<BookingNotificationDTO>> ping = Flux.interval(Duration.ZERO, Duration.ofSeconds(15))
                 .map(i -> ServerSentEvent.<BookingNotificationDTO>builder()
                         .event("ping")
                         .comment("keep-alive")
                         .build());
 
-        // Eventos reais vindos do RabbitMQ
         Flux<ServerSentEvent<BookingNotificationDTO>> events = notificationSink.getFlux()
                 .map(dto -> ServerSentEvent.<BookingNotificationDTO>builder()
                         .id(dto.getId().toString())
-                        .event("booking-created") // Nome do evento que o JS vai escutar
+                        .event("booking-created")
                         .data(dto)
                         .build());
 
-        // Junta o ping e os eventos no mesmo fluxo
         return Flux.merge(ping, events);
     }
 }
