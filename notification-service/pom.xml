@@ -64,6 +64,13 @@
 			<artifactId>reactor-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<!-- Documentação OpenAPI específica para WebFlux -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+			<version>2.6.0</version>
+		</dependency>
 	</dependencies>
 
 	<!-- ======================================================= -->
