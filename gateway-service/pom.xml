@@ -2,10 +2,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
+	<!-- ======================================================= -->
+	<!-- 1. METADADOS DO PROJETO E HERANÇA DO SPRING BOOT        -->
+	<!-- ======================================================= -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.2.4</version>
+		<version>3.3.2</version> <!-- Atualizado de 3.2.4 para 3.3.2 -->
 		<relativePath/>
 	</parent>
 	<groupId>com.roomres</groupId>
@@ -13,22 +17,31 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>gateway-service</name>
 
+	<!-- ======================================================= -->
+	<!-- 2. PROPRIEDADES (Versões globais para evitar conflitos) -->
+	<!-- ======================================================= -->
 	<properties>
 		<java.version>17</java.version>
-		<spring-cloud.version>2023.0.1</spring-cloud.version>
+		<spring-cloud.version>2023.0.3</spring-cloud.version> <!-- Atualizado de 2023.0.1 -->
 	</properties>
 
+	<!-- ======================================================= -->
+	<!-- 3. DEPENDÊNCIAS DO PROJETO                              -->
+	<!-- ======================================================= -->
 	<dependencies>
+		<!-- Core: Motor do Gateway Reativo -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-gateway</artifactId>
 		</dependency>
+
+		<!-- Infraestrutura: Service Discovery (Eureka) -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
 		</dependency>
 
-		<!-- NOVO: Bibliotecas JWT para validar os tokens localmente -->
+		<!-- Segurança (Validação do Token JWT no Filtro) -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-api</artifactId>
@@ -47,29 +60,31 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Observabilidade (Actuator, Micrometer, Zipkin) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-tracing-bridge-brave</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.zipkin.reporter2</groupId>
+			<artifactId>zipkin-reporter-brave</artifactId>
+		</dependency>
+
+		<!-- Ferramentas e Testes -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-
-		<!-- Ativa os endpoints internos de monitoramento do Spring -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator</artifactId>
-		</dependency>
-		<!-- Gera os IDs de Rastreio (Trace ID e Span ID) -->
-		<dependency>
-			<groupId>io.micrometer</groupId>
-			<artifactId>micrometer-tracing-bridge-brave</artifactId>
-		</dependency>
-		<!-- Coleta os dados e envia para o servidor do Zipkin -->
-		<dependency>
-			<groupId>io.zipkin.reporter2</groupId>
-			<artifactId>zipkin-reporter-brave</artifactId>
-		</dependency>
 	</dependencies>
 
+	<!-- ======================================================= -->
+	<!-- 4. GERENCIAMENTO DE DEPENDÊNCIAS (BOM do Spring Cloud)  -->
+	<!-- ======================================================= -->
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
@@ -82,6 +97,9 @@
 		</dependencies>
 	</dependencyManagement>
 
+	<!-- ======================================================= -->
+	<!-- 5. PLUGINS DE BUILD                                     -->
+	<!-- ======================================================= -->
 	<build>
 		<plugins>
 			<plugin>

@@ -3,11 +3,17 @@
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
+	<!-- ======================================================= -->
+	<!-- 1. METADADOS DO PROJETO                                 -->
+	<!-- ======================================================= -->
 	<groupId>com.roomres</groupId>
 	<artifactId>suggestion-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>suggestion-service</name>
 
+	<!-- ======================================================= -->
+	<!-- 2. PROPRIEDADES (Ecossistema Quarkus e Java)            -->
+	<!-- ======================================================= -->
 	<properties>
 		<compiler-plugin.version>3.13.0</compiler-plugin.version>
 		<maven.compiler.release>17</maven.compiler.release>
@@ -18,6 +24,20 @@
 		<quarkus.platform.version>3.8.3</quarkus.platform.version>
 	</properties>
 
+	<!-- ======================================================= -->
+	<!-- 3. DEPENDÊNCIAS DO PROJETO                              -->
+	<!-- ======================================================= -->
+	<dependencies>
+		<!-- Framework REST reativo do Quarkus (JAX-RS + JSON) -->
+		<dependency>
+			<groupId>io.quarkus</groupId>
+			<artifactId>quarkus-resteasy-reactive-jackson</artifactId>
+		</dependency>
+	</dependencies>
+
+	<!-- ======================================================= -->
+	<!-- 4. GERENCIAMENTO DE DEPENDÊNCIAS (BOM do Quarkus)       -->
+	<!-- ======================================================= -->
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
@@ -30,16 +50,12 @@
 		</dependencies>
 	</dependencyManagement>
 
-	<dependencies>
-		<!-- Framework REST do Quarkus -->
-		<dependency>
-			<groupId>io.quarkus</groupId>
-			<artifactId>quarkus-resteasy-reactive-jackson</artifactId>
-		</dependency>
-	</dependencies>
-
+	<!-- ======================================================= -->
+	<!-- 5. PLUGINS DE BUILD (AOT, Live Reload e GraalVM)        -->
+	<!-- ======================================================= -->
 	<build>
 		<plugins>
+			<!-- Plugin oficial do Quarkus para build e dev-mode -->
 			<plugin>
 				<groupId>${quarkus.platform.group-id}</groupId>
 				<artifactId>quarkus-maven-plugin</artifactId>
@@ -55,6 +71,7 @@
 					</execution>
 				</executions>
 			</plugin>
+			<!-- Plugin de compilação do Maven -->
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>${compiler-plugin.version}</version>
