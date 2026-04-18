@@ -2,6 +2,7 @@ package com.roomres.booking_service.controller;
 
 import com.roomres.booking_service.dto.BookingRequestDTO;
 import com.roomres.booking_service.dto.BookingResponseDTO;
+import com.roomres.booking_service.dto.RoomDTO;
 import com.roomres.booking_service.service.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,10 +19,19 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/bookings")
 @RequiredArgsConstructor
-@Tag(name = "Bookings", description = "Endpoints para orquestração e gerenciamento de reservas")
+@Tag(name = "Bookings", description = "Endpoints para orquestração e gestão de reservas e disponibilidade.")
 public class BookingController {
 
     private final BookingService bookingService;
+
+    // NOVO: Endpoint vital para a UI desenhar o calendário
+    @Operation(summary = "Pesquisar salas disponíveis", description = "Cruza dados do catálogo de salas com o histórico de reservas para devolver apenas as salas livres num determinado intervalo de tempo.")
+    @GetMapping("/availability")
+    public ResponseEntity<List<RoomDTO>> checkAvailability(
+            @RequestParam LocalDateTime start,
+            @RequestParam LocalDateTime end) {
+        return ResponseEntity.ok(bookingService.getAvailableRooms(start, end));
+    }
 
     @Operation(summary = "Lista todas as reservas", description = "Retorna o histórico completo de reservas do sistema.")
     @GetMapping
