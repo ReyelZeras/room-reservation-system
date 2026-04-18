@@ -3,19 +3,16 @@ server:
 
 spring:
   application:
-    name: audit-service
-
+    name: audit-service # CORRIGIDO: Usando hífen para bater com o Gateway
   datasource:
     url: jdbc:postgresql://localhost:5443/audit_db
     username: audit_user
     password: audit_pass
     driver-class-name: org.postgresql.Driver
-
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
-
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
@@ -24,8 +21,7 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
-  # --- NOVO: CONFIGURAÇÃO DO EUREKA CLIENT ---
-  eureka:
-    client:
-      service-url:
-        defaultZone: http://localhost:8761/eureka/
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
