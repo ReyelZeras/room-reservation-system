@@ -17,10 +17,11 @@ public class RoomService {
 
     private final RoomRepository repository;
 
-    // Quando este método for chamado, o Spring olha primeiro no Redis (chave "rooms")
+    // Arquitetura: Utilizo o Redis via @Cacheable. Como as características físicas de uma sala (nome, capacidade)
+    // raramente mudam, evito idas constantes ao PostgreSQL. O tempo de vida (TTL) está configurado para 10 minutos.
     @Cacheable(value = "rooms", key = "'all-rooms'")
     public List<Room> findAll() {
-        System.out.println("BUSCANDO NO BANCO DE DADOS (POSTGRES)...");
+        System.out.println("CACHE MISS: A aceder à base de dados relacional...");
         return repository.findAll();
     }
 
@@ -29,7 +30,8 @@ public class RoomService {
         return repository.findById(id);
     }
 
-    // Sempre que salvar ou deletar, limpamos o cache para não servir dados velhos
+    // Segurança de Dados: Ao modificar uma sala, é obrigatório invalidar o cache (@CacheEvict)
+    // para impedir que o booking-service receba "dados fantasma" e crie reservas em salas desativadas.
     @CacheEvict(value = "rooms", allEntries = true)
     public Room save(Room room) {
         return repository.save(room);

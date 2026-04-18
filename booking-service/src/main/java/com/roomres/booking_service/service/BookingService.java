@@ -4,6 +4,7 @@ import com.roomres.booking_service.client.RoomClient;
 import com.roomres.booking_service.client.UserClient;
 import com.roomres.booking_service.dto.BookingRequestDTO;
 import com.roomres.booking_service.dto.BookingResponseDTO;
+import com.roomres.booking_service.dto.RoomDTO;
 import com.roomres.booking_service.exception.BusinessException;
 import com.roomres.booking_service.exception.NotFoundException;
 import com.roomres.booking_service.model.Booking;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -32,6 +34,37 @@ public class BookingService {
     private final UserClient userClient;
     private final BookingEventPublisher eventPublisher;
     private final AuditPublisher auditPublisher;
+
+    // NOVO MÉTODO: Orquestração para descobrir salas disponíveis
+    // Optei por cruzar os dados em memória aqui no orchestrator para não acoplar a base de dados do room-service às reservas.
+    @Transactional(readOnly = true)
+    @CircuitBreaker(name = "roomServiceCB", fallbackMethod = "fallbackGetAvailableRooms")
+    public List<RoomDTO> getAvailableRooms(LocalDateTime start, LocalDateTime end) {
+        validateDates(start, end);
+
+        // 1. Pede todas as salas ao room-service (protegido pelo Circuit Breaker)
+        List<RoomDTO> allRooms = roomClient.getAllRooms();
+
+        // 2. Vai à própria BD buscar apenas as reservas que se sobrepõem às datas solicitadas
+        List<Booking> conflictingBookings = bookingRepository.findConflictingBookings(start, end);
+
+        // 3. Extrai os UUIDs das salas que estão ocupadas para uma pesquisa (Set é O(1) de performance)
+        Set<UUID> occupiedRoomIds = conflictingBookings.stream()
+                .map(Booking::getRoomId)
+                .collect(Collectors.toSet());
+
+        // 4. Filtra a lista de salas mantendo apenas as que NÃO estão no Set de ocupadas e que estão operacionais.
+        return allRooms.stream()
+                .filter(room -> !occupiedRoomIds.contains(room.id()))
+                .filter(room -> "AVAILABLE".equals(room.status()))
+                .collect(Collectors.toList());
+    }
+
+    // Fallback: Se o room-service estiver em baixo, devolve erro amigável em vez de um timeout de 500ms
+    public List<RoomDTO> fallbackGetAvailableRooms(LocalDateTime start, LocalDateTime end, Throwable t) {
+        log.error("Circuit Breaker ativado na pesquisa de disponibilidade: {}", t.getMessage());
+        throw new BusinessException("O serviço de catálogo de salas está temporariamente indisponível. Tente novamente em instantes.");
+    }
 
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getAll() {
