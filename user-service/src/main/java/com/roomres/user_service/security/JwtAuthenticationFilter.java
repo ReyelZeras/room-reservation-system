@@ -23,6 +23,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
+    // Arquitetura: Este filtro intercepta CADA requisição que entra no serviço de utilizadores.
+    // Optei por OncePerRequestFilter em vez do Filter genérico para garantir que a validação não ocorre em loop interno.
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -34,40 +36,42 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String userEmail;
 
-        // Se não houver cabeçalho ou não for Bearer, apenas continua o fluxo.
-        // O Spring Security decidirá se a rota exige autenticação ou não depois.
+        // Fast-fail: Se não tem cabeçalho ou não começa por 'Bearer ', ignora e passa à frente.
+        // O Spring Security tratará de bloquear a rota mais tarde se for uma rota protegida.
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
-            jwt = authHeader.substring(7);
-
-            // Validação básica do formato do JWT para evitar o erro de "found 0 periods"
-            if (jwt.chars().filter(ch -> ch == '.').count() != 2) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-
+            jwt = authHeader.substring(7); // Remove a palavra "Bearer "
             userEmail = jwtService.extractUsername(jwt);
 
+            // Se conseguimos ler o email e o contexto de segurança atual está vazio (o utilizador não está autenticado nesta thread)...
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+                // Vamos à base de dados carregar o perfil para verificar roles/authorities
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+
+                // Validação criptográfica do token em relação ao utilizador
                 if (jwtService.isTokenValid(jwt, userDetails)) {
+
+                    // Constrói o "Crachá" de autenticação oficial do Spring Security
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
                             userDetails.getAuthorities()
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    // Injeta a autenticação no contexto da Thread atual. A partir daqui, os @Controllers
+                    // conseguem aceder ao utilizador com a anotação @AuthenticationPrincipal.
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
         } catch (Exception e) {
-            // Em caso de erro (token expirado, malformado, etc), não interrompemos o filtro.
-            // Apenas deixamos passar sem autenticar o contexto.
-            logger.error("Erro na autenticação JWT: " + e.getMessage());
+            // Em caso de erro (token expirado ou forjado), a resposta falhará silenciosamente no filtro
+            // e resultará num 403/401 natural pelo framework.
         }
 
         filterChain.doFilter(request, response);
