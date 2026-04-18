@@ -4,46 +4,77 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<!-- ======================================================= -->
-	<!-- 1. METADADOS DO PROJETO                                 -->
+	<!-- 1. METADADOS DO PROJETO E HERANÇA DO SPRING BOOT        -->
 	<!-- ======================================================= -->
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.3.2</version>
+		<relativePath/>
+	</parent>
 	<groupId>com.roomres</groupId>
-	<artifactId>suggestion-service</artifactId>
+	<artifactId>notification-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>suggestion-service</name>
+	<name>notification-service</name>
+	<description>Serviço de Notificações Reativas via RabbitMQ e SSE</description>
 
 	<!-- ======================================================= -->
-	<!-- 2. PROPRIEDADES (Ecossistema Quarkus e Java)            -->
+	<!-- 2. PROPRIEDADES (Versões globais para evitar conflitos) -->
 	<!-- ======================================================= -->
 	<properties>
-		<compiler-plugin.version>3.13.0</compiler-plugin.version>
-		<maven.compiler.release>17</maven.compiler.release>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
-		<quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-		<quarkus.platform.version>3.8.3</quarkus.platform.version>
+		<java.version>17</java.version>
+		<spring-cloud.version>2023.0.3</spring-cloud.version>
 	</properties>
 
 	<!-- ======================================================= -->
 	<!-- 3. DEPENDÊNCIAS DO PROJETO                              -->
 	<!-- ======================================================= -->
 	<dependencies>
-		<!-- Framework REST reativo do Quarkus (JAX-RS + JSON) -->
+		<!-- Core: Reatividade (Spring WebFlux substitui o Web normal) -->
 		<dependency>
-			<groupId>io.quarkus</groupId>
-			<artifactId>quarkus-resteasy-reactive-jackson</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
+		</dependency>
+
+		<!-- Mensageria: Consumidor do RabbitMQ -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-amqp</artifactId>
+		</dependency>
+
+		<!-- Infraestrutura: Service Discovery (Eureka) -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+		</dependency>
+
+		<!-- Ferramentas e Testes -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.projectreactor</groupId>
+			<artifactId>reactor-test</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
 	<!-- ======================================================= -->
-	<!-- 4. GERENCIAMENTO DE DEPENDÊNCIAS (BOM do Quarkus)       -->
+	<!-- 4. GERENCIAMENTO DE DEPENDÊNCIAS (BOM do Spring Cloud)  -->
 	<!-- ======================================================= -->
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
-				<groupId>${quarkus.platform.group-id}</groupId>
-				<artifactId>${quarkus.platform.artifact-id}</artifactId>
-				<version>${quarkus.platform.version}</version>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
@@ -51,34 +82,20 @@
 	</dependencyManagement>
 
 	<!-- ======================================================= -->
-	<!-- 5. PLUGINS DE BUILD (AOT, Live Reload e GraalVM)        -->
+	<!-- 5. PLUGINS DE BUILD                                     -->
 	<!-- ======================================================= -->
 	<build>
 		<plugins>
-			<!-- Plugin oficial do Quarkus para build e dev-mode -->
 			<plugin>
-				<groupId>${quarkus.platform.group-id}</groupId>
-				<artifactId>quarkus-maven-plugin</artifactId>
-				<version>${quarkus.platform.version}</version>
-				<extensions>true</extensions>
-				<executions>
-					<execution>
-						<goals>
-							<goal>build</goal>
-							<goal>generate-code</goal>
-							<goal>generate-code-tests</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<!-- Plugin de compilação do Maven -->
-			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>${compiler-plugin.version}</version>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
-					<compilerArgs>
-						<arg>-parameters</arg>
-					</compilerArgs>
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
 				</configuration>
 			</plugin>
 		</plugins>
