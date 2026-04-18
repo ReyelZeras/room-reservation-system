@@ -12,7 +12,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ReservaCriadaEvent {
+public class ReservationCreatedEvent {
     private UUID bookingId;
     private UUID roomId;
     private UUID userId;

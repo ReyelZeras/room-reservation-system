@@ -2,77 +2,86 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
+	<!-- ======================================================= -->
+	<!-- 1. METADADOS DO PROJETO E HERANÇA DO SPRING BOOT        -->
+	<!-- ======================================================= -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.2</version> <!-- CORRIGIDO: Elevado para 3.3.2 para padronizar com os outros -->
+		<version>3.3.2</version>
 		<relativePath/>
 	</parent>
-
 	<groupId>com.roomres</groupId>
 	<artifactId>audit-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>audit-service</name>
 
+	<!-- ======================================================= -->
+	<!-- 2. PROPRIEDADES (Versões globais para evitar conflitos) -->
+	<!-- ======================================================= -->
 	<properties>
 		<java.version>17</java.version>
-		<spring-cloud.version>2023.0.3</spring-cloud.version> <!-- Adicionado -->
+		<spring-cloud.version>2023.0.3</spring-cloud.version>
 	</properties>
 
+	<!-- ======================================================= -->
+	<!-- 3. DEPENDÊNCIAS DO PROJETO                              -->
+	<!-- ======================================================= -->
 	<dependencies>
-		<!-- CORRIGIDO: Adicionado o WEB para o Eureka funcionar -->
+		<!-- Core: Web e Banco de Dados -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.kafka</groupId>
-			<artifactId>spring-kafka</artifactId>
-		</dependency>
-
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Mensageria: Consumidor do Kafka -->
 		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka</artifactId>
 		</dependency>
 
-		<!-- EUREKA CLIENT -->
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<!-- Spring Batch para processamento em lote -->
+		<!-- Processamento em Lote Noturno (Spring Batch e Quartz) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-batch</artifactId>
 		</dependency>
-		<!-- Suporte a agendamento de tarefas (Cron) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-quartz</artifactId>
 		</dependency>
 
+		<!-- Infraestrutura: Service Discovery (Eureka) -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+		</dependency>
+
+		<!-- Ferramentas e Testes -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
+	<!-- ======================================================= -->
+	<!-- 4. GERENCIAMENTO DE DEPENDÊNCIAS (BOM do Spring Cloud)  -->
+	<!-- ======================================================= -->
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
@@ -85,11 +94,22 @@
 		</dependencies>
 	</dependencyManagement>
 
+	<!-- ======================================================= -->
+	<!-- 5. PLUGINS DE BUILD                                     -->
+	<!-- ======================================================= -->
 	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

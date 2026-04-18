@@ -2,10 +2,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
+	<!-- ======================================================= -->
+	<!-- 1. METADADOS DO PROJETO E HERANÇA DO SPRING BOOT        -->
+	<!-- ======================================================= -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.2.4</version>
+		<version>3.3.2</version> <!-- Atualizado de 3.2.4 para 3.3.2 -->
 		<relativePath/>
 	</parent>
 	<groupId>com.roomres</groupId>
@@ -13,18 +17,25 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>discovery-service</name>
 
+	<!-- ======================================================= -->
+	<!-- 2. PROPRIEDADES (Versões globais para evitar conflitos) -->
+	<!-- ======================================================= -->
 	<properties>
 		<java.version>17</java.version>
-		<spring-cloud.version>2023.0.0</spring-cloud.version>
+		<spring-cloud.version>2023.0.3</spring-cloud.version> <!-- Atualizado de 2023.0.0 -->
 	</properties>
 
+	<!-- ======================================================= -->
+	<!-- 3. DEPENDÊNCIAS DO PROJETO                              -->
+	<!-- ======================================================= -->
 	<dependencies>
-		<!-- Servidor Eureka -->
+		<!-- Infraestrutura Central: Servidor Eureka -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
 		</dependency>
 
+		<!-- Ferramentas e Testes -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -32,6 +43,9 @@
 		</dependency>
 	</dependencies>
 
+	<!-- ======================================================= -->
+	<!-- 4. GERENCIAMENTO DE DEPENDÊNCIAS (BOM do Spring Cloud)  -->
+	<!-- ======================================================= -->
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
@@ -44,6 +58,9 @@
 		</dependencies>
 	</dependencyManagement>
 
+	<!-- ======================================================= -->
+	<!-- 5. PLUGINS DE BUILD                                     -->
+	<!-- ======================================================= -->
 	<build>
 		<plugins>
 			<plugin>

@@ -1,7 +1,7 @@
 package com.roomres.booking_service.publisher;
 
 import com.roomres.booking_service.config.RabbitMQConfig;
-import com.roomres.booking_service.dto.ReservaCriadaEvent;
+import com.roomres.booking_service.dto.ReservationCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +15,7 @@ public class BookingMessagePublisher {
     private static final Logger log = LoggerFactory.getLogger(BookingMessagePublisher.class);
     private final RabbitTemplate rabbitTemplate;
 
-    public void publishReservaCriada(ReservaCriadaEvent event) {
+    public void publishReservaCriada(ReservationCreatedEvent event) {
         log.info("Publicando evento no RabbitMQ para a reserva: {}", event.getBookingId());
 
         rabbitTemplate.convertAndSend(

@@ -1,4 +1,4 @@
-name: Integracao Continua - Microsservicos
+name: Integração Contínua - Ecossistema Completo
 
 on:
   push:
@@ -9,11 +9,11 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
     strategy:
       fail-fast: false
       matrix:
-        service: 
+        # A matriz define quais pastas (serviços) serão testadas independentemente.
+        service:
           - user-service
           - room-service
           - booking-service
@@ -21,38 +21,55 @@ jobs:
           - notification-service
           - discovery-service
           - gateway-service
+          - suggestion-service # Nosso Quarkus!
 
     steps:
-    - name: Baixar o código do repositório
-      uses: actions/checkout@v4
+      - name: Baixar o código do repositório
+        uses: actions/checkout@v4
 
-    - name: Configurar o Java 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
+      - name: Configurar o Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
 
-    - name: Subir Infraestrutura de Apoio (Docker Compose)
-      run: docker compose up -d
+      - name: Subir Infraestrutura de Apoio (Bancos, RabbitMQ, Kafka)
+        run: docker compose up -d
 
-    - name: Aguardar prontidão total da Infraestrutura
-      run: sleep 45 # Aumentado um pouco mais para garantir o RabbitMQ
+      - name: Aguardar prontidão total da Infraestrutura (Healthcheck manual)
+        run: sleep 45 # Dá tempo para o RabbitMQ e Kafka bootarem completamente
 
-    - name: Build e Testes Automáticos (${{ matrix.service }})
-      working-directory: ./${{ matrix.service }}
-      # Adicionamos o notification-service na lista de serviços que pulam testes de contexto no CI
-      run: |
-        if [[ "${{ matrix.service }}" == "discovery-service" || "${{ matrix.service }}" == "gateway-service" || "${{ matrix.service }}" == "notification-service" ]]; then
-          mvn clean install -DskipTests
-        else
-          mvn clean verify \
-          -Dspring.cloud.discovery.enabled=false \
-          -Dspring.cloud.config.enabled=false \
-          -Dspring.cloud.service-registry.auto-registration.enabled=false \
-          -Dspring.main.allow-bean-definition-overriding=true
-        fi
-      
-    - name: Desligar Infraestrutura
-      if: always()
-      run: docker compose down
+      # ==========================================
+      # BUILD PARA SERVIÇOS SPRING BOOT
+      # ==========================================
+      - name: Build e Testes Automáticos (Spring Boot)
+        if: ${{ matrix.service != 'suggestion-service' }}
+        working-directory: ./${{ matrix.service }}
+        run: |
+          # Gateway, Discovery e Notification não possuem testes pesados de integração ainda.
+          # Vamos compilar pulando testes para eles passarem no CI.
+          if [[ "${{ matrix.service }}" == "discovery-service" || "${{ matrix.service }}" == "gateway-service" || "${{ matrix.service }}" == "notification-service" ]]; then
+            mvn clean install -DskipTests
+          else
+            # Para User, Room, Booking e Audit, rodamos todos os testes (Verify)
+            # Desligamos a auto-configuração do Eureka para os testes não falharem caçando a porta 8761
+            mvn clean verify \
+            -Dspring.cloud.discovery.enabled=false \
+            -Dspring.cloud.config.enabled=false \
+            -Dspring.cloud.service-registry.auto-registration.enabled=false
+          fi
+
+      # ==========================================
+      # BUILD PARA O SERVIÇO QUARKUS
+      # ==========================================
+      - name: Build Automático (Quarkus)
+        if: ${{ matrix.service == 'suggestion-service' }}
+        working-directory: ./${{ matrix.service }}
+        run: |
+          # O Quarkus compila usando o goal quarkus:build.
+          mvn clean package -Dquarkus.build.skip=false
+
+      - name: Desligar Infraestrutura
+        if: always()
+        run: docker compose down
