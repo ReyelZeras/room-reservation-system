@@ -10,6 +10,7 @@
         <module name="audit_service" />
         <module name="audit-service" />
         <module name="gateway-service" />
+        <module name="suggestion-service" />
         <module name="reservation" />
         <module name="notification-service" />
         <module name="discovery-service" />
@@ -35,6 +36,7 @@
       <module name="notification-service" options="-parameters" />
       <module name="reservation" options="-parameters" />
       <module name="room-service" options="-parameters" />
+      <module name="suggestion-service" options="-parameters" />
       <module name="user-service" options="-parameters" />
     </option>
   </component>
