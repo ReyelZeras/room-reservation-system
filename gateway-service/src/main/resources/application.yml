@@ -11,7 +11,7 @@ spring:
         locator:
           enabled: true
       routes:
-        # Rota de Usuários/Auth (Acesso Público para Login)
+        # Rota de Usuários/Auth (Acesso Público para Login e JWT)
         - id: user-service-route
           uri: lb://user-service
           predicates:
@@ -33,19 +33,27 @@ spring:
           filters:
             - AuthenticationFilter
 
-        # NOVO: Rota de Notificações (SSE)
-        # Não colocamos o AuthenticationFilter aqui porque o validador de rotas
-        # já vai pular a validação para o /stream.
+        # Rota de Notificações (SSE Reativo - Não protegida pelo Filtro devido ao EventSource do JS)
         - id: notification-service-route
           uri: lb://notification-service
           predicates:
             - Path=/api/v1/notifications/**
+
+        # Rota Híbrida para o Quarkus (Sem Eureka, URL direta de alta performance)
+        - id: suggestion-service-route
+          uri: http://localhost:8086
+          predicates:
+            - Path=/api/v1/suggestions/**
+          filters:
+            - AuthenticationFilter
+
+# Registo no Service Discovery
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
 
-# Configurações de Observabilidade (Zipkin)
+# Configurações de Observabilidade (Zipkin e Micrometer)
 management:
   tracing:
     sampling:
