@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: audit-service # CORRIGIDO: Usando hífen para bater com o Gateway
+    name: audit-service
   datasource:
     url: jdbc:postgresql://localhost:5443/audit_db
     username: audit_user
@@ -20,6 +20,13 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+  # Configuração do Spring Batch e Quartz
+  batch:
+    jdbc:
+      initialize-schema: always # Cria as tabelas BATCH_JOB_* de controle
+  quartz:
+    job-store-type: memory
 
 eureka:
   client:
