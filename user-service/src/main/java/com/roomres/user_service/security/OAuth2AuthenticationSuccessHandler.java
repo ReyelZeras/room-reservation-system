@@ -5,12 +5,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.io.IOException;
 
@@ -34,8 +34,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
         String token = jwtService.generateToken(userDetails);
 
-        // Redireciona para o endpoint 'me' passando o token na URL para o usuário copiar
-        String targetUrl = UriComponentsBuilder.fromUriString("http://localhost:8081/api/v1/auth/me")
+        // CORREÇÃO: Redireciona de volta passando pelo GATEWAY (8080) e não direto pelo 8081
+        String targetUrl = UriComponentsBuilder.fromUriString("http://localhost:8080/api/v1/auth/me")
                 .queryParam("token", token)
                 .build().toUriString();
 
