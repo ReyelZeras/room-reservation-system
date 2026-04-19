@@ -1,5 +1,13 @@
 version: '3.8'
+
+networks:
+  roomres-network:
+    driver: bridge
+
 services:
+  # ==========================================
+  # INFRAESTRUTURA DE APOIO
+  # ==========================================
   user-db:
     image: postgres:15-alpine
     container_name: user-db
@@ -9,6 +17,14 @@ services:
       POSTGRES_PASSWORD: user_pass
     ports:
       - "5441:5432"
+    networks:
+      - roomres-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_user -d user_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   room-db:
     image: postgres:15-alpine
@@ -19,6 +35,14 @@ services:
       POSTGRES_PASSWORD: room_pass
     ports:
       - "5442:5432"
+    networks:
+      - roomres-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U room_user -d room_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   booking-db:
     image: postgres:15-alpine
@@ -29,6 +53,14 @@ services:
       POSTGRES_PASSWORD: booking_pass
     ports:
       - "5440:5432"
+    networks:
+      - roomres-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booking_user -d booking_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   audit-db:
     image: postgres:15-alpine
@@ -39,6 +71,14 @@ services:
       POSTGRES_PASSWORD: audit_pass
     ports:
       - "5443:5432"
+    networks:
+      - roomres-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U audit_user -d audit_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -46,6 +86,14 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    networks:
+      - roomres-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
@@ -53,6 +101,8 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - roomres-network
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
@@ -64,20 +114,159 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - roomres-network
 
   redis:
     image: redis:7-alpine
     container_name: room-reservation-redis
     ports:
       - "6379:6379"
-    restart: always
+    networks:
+      - roomres-network
 
-  # NOVO: Servidor do Zipkin
   zipkin:
     image: openzipkin/zipkin:latest
     container_name: zipkin
     ports:
       - "9411:9411"
-    restart: always
+    networks:
+      - roomres-network
+
+  # ==========================================
+  # MICROSSERVIÇOS DA APLICAÇÃO
+  # ==========================================
+
+  discovery-service:
+    build: ./discovery-service
+    container_name: discovery-service
+    ports:
+      - "8761:8761"
+    networks:
+      - roomres-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8761/actuator/health"]
+      interval: 15s
+      retries: 5
+      start_period: 30s
+
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      user-db:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://user-db:5432/user_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-dummy}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-dummy}
+    networks:
+      - roomres-network
+
+  room-service:
+    build: ./room-service
+    container_name: room-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      room-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      discovery-service:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://room-db:5432/room_db
+      - SPRING_DATA_REDIS_HOST=redis
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+    networks:
+      - roomres-network
+
+  booking-service:
+    build: ./booking-service
+    container_name: booking-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      booking-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      discovery-service:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://booking-db:5432/booking_db
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+    networks:
+      - roomres-network
+
+  audit-service:
+    build: ./audit-service
+    container_name: audit-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      audit-db:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      discovery-service:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://audit-db:5432/audit_db
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+    networks:
+      - roomres-network
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+    networks:
+      - roomres-network
+
+  suggestion-service:
+    build: ./suggestion-service
+    container_name: suggestion-service
+    ports:
+      - "8086:8086"
+    networks:
+      - roomres-network
+
+  gateway-service:
+    build: ./gateway-service
+    container_name: gateway-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+    networks:
+      - roomres-network

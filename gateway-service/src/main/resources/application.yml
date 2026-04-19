@@ -4,20 +4,17 @@ server:
 spring:
   application:
     name: gateway-service
-
   cloud:
     gateway:
       discovery:
         locator:
           enabled: true
       routes:
-        # Rota de Usuários/Auth (Acesso Público para Login e JWT)
         - id: user-service-route
           uri: lb://user-service
           predicates:
             - Path=/api/v1/auth/**, /api/v1/users/**
 
-        # Rota de Salas (Protegida pelo Filtro JWT)
         - id: room-service-route
           uri: lb://room-service
           predicates:
@@ -25,7 +22,6 @@ spring:
           filters:
             - AuthenticationFilter
 
-        # Rota de Reservas (Protegida pelo Filtro JWT)
         - id: booking-service-route
           uri: lb://booking-service
           predicates:
@@ -33,31 +29,26 @@ spring:
           filters:
             - AuthenticationFilter
 
-        # Rota de Notificações (SSE Reativo - Não protegida pelo Filtro devido ao EventSource do JS)
         - id: notification-service-route
           uri: lb://notification-service
           predicates:
             - Path=/api/v1/notifications/**
 
-        # Rota Híbrida para o Quarkus (Sem Eureka, URL direta de alta performance)
+        # CORREÇÃO: No Docker, usamos o nome do container, não 'localhost'
         - id: suggestion-service-route
-          uri: http://localhost:8086
+          uri: http://suggestion-service:8086
           predicates:
             - Path=/api/v1/suggestions/**
-          filters:
-            - AuthenticationFilter
 
-# Registo no Service Discovery
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://discovery-service:8761/eureka/
 
-# Configurações de Observabilidade (Zipkin e Micrometer)
 management:
   tracing:
     sampling:
       probability: 1.0
   zipkin:
     tracing:
-      endpoint: "http://localhost:9411/api/v2/spans"
+      endpoint: "http://zipkin:9411/api/v2/spans"

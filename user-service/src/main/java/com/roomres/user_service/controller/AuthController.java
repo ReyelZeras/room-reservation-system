@@ -31,15 +31,11 @@ public class AuthController {
         return principal.getAttributes();
     }
 
-    @Operation(summary = "Gerador de Token (Ambiente Dev)", description = "Gera um JWT válido para testes via Postman.")
-    @PostMapping("/dev/token")
-    public ResponseEntity<String> generateTokenForDev(@RequestParam String email) {
-        // Busca o usuário do banco (ex: admin@roomres.com que foi criado na migration)
-        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-
-        // Gera o token usando a classe JwtService que você já tem configurada!
-        String token = jwtService.generateToken(userDetails);
-
+    @Operation(summary = "Gerar token de desenvolvimento", description = "Gera um JWT válido para testes locais.")
+    @GetMapping("/dev/token")
+    public ResponseEntity<String> getDevToken(@RequestParam String email) {
+        UserDetails user = userDetailsService.loadUserByUsername(email);
+        String token = jwtService.generateToken(user);
         return ResponseEntity.ok(token);
     }
 }
