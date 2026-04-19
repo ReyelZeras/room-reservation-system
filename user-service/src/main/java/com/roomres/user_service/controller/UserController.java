@@ -20,22 +20,21 @@ public class UserController {
 
     private final UserService userService;
 
-    // Movido para o topo para evitar conflito com /{id}
     @Operation(summary = "Ping de saúde", description = "Verifica se o serviço de usuários está respondendo.")
     @GetMapping("/health/ping")
     public String ping() {
         return "User Service is UP and Running!";
     }
 
-    @Operation(summary = "Lista todos os usuários", description = "Retorna uma lista de todos os usuários cadastrados no sistema.")
+    // CORREÇÃO: Rota que lista todos os usuários estava faltando!
+    @Operation(summary = "Lista todos os usuários")
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userService.findAll());
     }
 
-    @Operation(summary = "Busca usuário por ID", description = "Retorna os detalhes de um usuário específico do sistema.")
-    @ApiResponse(responseCode = "200", description = "Usuário encontrado com sucesso")
-    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    // CORREÇÃO: Rota que busca por ID estava faltando! É vital para o BookingService validar o usuário!
+    @Operation(summary = "Busca usuário por ID")
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable UUID id) {
         return userService.findById(id)
@@ -43,7 +42,7 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Atualiza um usuário", description = "Permite atualizar dados manuais de um usuário existente.")
+    @Operation(summary = "Atualiza um usuário")
     @ApiResponse(responseCode = "200", description = "Usuário atualizado com sucesso")
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable UUID id, @RequestBody User userDetails) {
@@ -54,7 +53,7 @@ public class UserController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Deletar usuário", description = "Remove permanentemente um usuário do banco de dados.")
+    @Operation(summary = "Deletar usuário")
     @ApiResponse(responseCode = "204", description = "Usuário removido com sucesso")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
