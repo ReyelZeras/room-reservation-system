@@ -12,7 +12,6 @@ import com.roomres.booking_service.model.BookingStatus;
 import com.roomres.booking_service.publisher.AuditPublisher;
 import com.roomres.booking_service.publisher.BookingEventPublisher;
 import com.roomres.booking_service.repository.BookingRepository;
-import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +54,10 @@ public class BookingService {
     }
 
     public List<RoomDTO> fallbackGetAvailableRooms(LocalDateTime start, LocalDateTime end, Throwable t) {
+        // CORREÇÃO: Se o erro for a data no passado (BusinessException), não aciona a mensagem de fallback genérica
+        if (t instanceof BusinessException) {
+            throw (BusinessException) t;
+        }
         log.error("Circuit Breaker ativado na pesquisa de disponibilidade: {}", t.getMessage());
         throw new BusinessException("O serviço de catálogo de salas está temporariamente indisponível. Tente novamente em instantes.");
     }
@@ -109,10 +112,14 @@ public class BookingService {
         return response;
     }
 
-    // CORREÇÃO: Inspeciona se o erro real foi um 404 (Not Found) gerado pelo FeignClient
     public BookingResponseDTO fallbackCreateBooking(BookingRequestDTO dto, Throwable t) {
-        if (t instanceof FeignException.NotFound) {
-            throw new NotFoundException("O ID da Sala ou do Usuário informado não existe na base de dados.");
+        // CORREÇÃO: Se for erro de validação (data no passado, sala ocupada), apenas repassa o erro correto.
+        if (t instanceof BusinessException) {
+            throw (BusinessException) t;
+        }
+        // Repassa erro 404 se a sala/usuário não existir
+        if (t instanceof feign.FeignException && ((feign.FeignException) t).status() == 404) {
+            throw new NotFoundException("O ID da Sala ou do Usuário informado não existe na nossa base de dados.");
         }
 
         log.error("CIRCUIT BREAKER ATIVADO! Motivo da falha: {}", t.getMessage());
@@ -167,7 +174,6 @@ public class BookingService {
         if (start.isBefore(LocalDateTime.now())) throw new BusinessException("Não é permitido agendar reservas no passado.");
     }
 
-    // Deixamos a exceção subir naturalmente para o Circuit Breaker capturar e processar no Fallback
     private void validateRoomAndUser(UUID roomId, UUID userId) {
         roomClient.getRoomById(roomId);
         userClient.getUserById(userId);
