@@ -33,7 +33,10 @@ public class SecurityConfig {
                                 "/login/**",
                                 "/oauth2/**",
                                 "/error",
-                                "/api/v1/auth/**" // <-- Endpoint do nosso AuthController liberado!
+                                "/api/v1/auth/**", // <-- Endpoint do nosso AuthController liberado!
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

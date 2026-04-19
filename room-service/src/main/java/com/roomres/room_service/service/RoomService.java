@@ -8,7 +8,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -21,13 +20,16 @@ public class RoomService {
     // raramente mudam, evito idas constantes ao PostgreSQL. O tempo de vida (TTL) está configurado para 10 minutos.
     @Cacheable(value = "rooms", key = "'all-rooms'")
     public List<Room> findAll() {
-        System.out.println("CACHE MISS: A aceder à base de dados relacional...");
+        System.out.println("CACHE MISS: Acedendo à base de dados relacional...");
         return repository.findAll();
     }
 
-    @Cacheable(value = "rooms", key = "#id")
-    public Optional<Room> findById(UUID id) {
-        return repository.findById(id);
+    // Correção de Arquitetura: O Spring Cache lança erro 500 ao tentar salvar 'null' quando configurado
+    // com disableCachingNullValues(). A instrução 'unless = "#result == null"' diz ao Spring
+    // para simplesmente não fazer o cache caso o banco não encontre a sala, retornando o 404 limpo.
+    @Cacheable(value = "rooms", key = "#id", unless = "#result == null")
+    public Room findById(UUID id) {
+        return repository.findById(id).orElse(null);
     }
 
     // Segurança de Dados: Ao modificar uma sala, é obrigatório invalidar o cache (@CacheEvict)
