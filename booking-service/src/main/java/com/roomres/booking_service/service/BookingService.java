@@ -12,6 +12,7 @@ import com.roomres.booking_service.model.BookingStatus;
 import com.roomres.booking_service.publisher.AuditPublisher;
 import com.roomres.booking_service.publisher.BookingEventPublisher;
 import com.roomres.booking_service.repository.BookingRepository;
+import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,32 +36,24 @@ public class BookingService {
     private final BookingEventPublisher eventPublisher;
     private final AuditPublisher auditPublisher;
 
-    // NOVO MÉTODO: Orquestração para descobrir salas disponíveis
-    // Optei por cruzar os dados em memória aqui no orchestrator para não acoplar a base de dados do room-service às reservas.
     @Transactional(readOnly = true)
     @CircuitBreaker(name = "roomServiceCB", fallbackMethod = "fallbackGetAvailableRooms")
     public List<RoomDTO> getAvailableRooms(LocalDateTime start, LocalDateTime end) {
         validateDates(start, end);
 
-        // 1. Pede todas as salas ao room-service (protegido pelo Circuit Breaker)
         List<RoomDTO> allRooms = roomClient.getAllRooms();
-
-        // 2. Vai à própria BD buscar apenas as reservas que se sobrepõem às datas solicitadas
         List<Booking> conflictingBookings = bookingRepository.findConflictingBookings(start, end);
 
-        // 3. Extrai os UUIDs das salas que estão ocupadas para uma pesquisa (Set é O(1) de performance)
         Set<UUID> occupiedRoomIds = conflictingBookings.stream()
                 .map(Booking::getRoomId)
                 .collect(Collectors.toSet());
 
-        // 4. Filtra a lista de salas mantendo apenas as que NÃO estão no Set de ocupadas e que estão operacionais.
         return allRooms.stream()
                 .filter(room -> !occupiedRoomIds.contains(room.id()))
                 .filter(room -> "AVAILABLE".equals(room.status()))
                 .collect(Collectors.toList());
     }
 
-    // Fallback: Se o room-service estiver em baixo, devolve erro amigável em vez de um timeout de 500ms
     public List<RoomDTO> fallbackGetAvailableRooms(LocalDateTime start, LocalDateTime end, Throwable t) {
         log.error("Circuit Breaker ativado na pesquisa de disponibilidade: {}", t.getMessage());
         throw new BusinessException("O serviço de catálogo de salas está temporariamente indisponível. Tente novamente em instantes.");
@@ -94,12 +87,10 @@ public class BookingService {
         log.info("Iniciando criação de reserva...");
         validateDates(dto.getStartTime(), dto.getEndTime());
 
-        // Usa o método do repositório para verificar conflitos
         if (bookingRepository.existsConflictingBooking(dto.getRoomId(), dto.getStartTime(), dto.getEndTime())) {
             throw new BusinessException("A sala já está reservada para o período selecionado.");
         }
 
-        // Valida nos outros microsserviços via Feign Client (ponto monitorado pelo Circuit Breaker)
         validateRoomAndUser(dto.getRoomId(), dto.getUserId());
 
         Booking booking = Booking.builder()
@@ -115,14 +106,17 @@ public class BookingService {
         BookingResponseDTO response = new BookingResponseDTO(saved);
 
         dispatchEvents(response, "RESERVA_CRIADA");
-
         return response;
     }
 
-    // MÉTODO DE FALLBACK: Executado se o 'validateRoomAndUser' falhar por indisponibilidade de rede
+    // CORREÇÃO: Inspeciona se o erro real foi um 404 (Not Found) gerado pelo FeignClient
     public BookingResponseDTO fallbackCreateBooking(BookingRequestDTO dto, Throwable t) {
+        if (t instanceof FeignException.NotFound) {
+            throw new NotFoundException("O ID da Sala ou do Usuário informado não existe na base de dados.");
+        }
+
         log.error("CIRCUIT BREAKER ATIVADO! Motivo da falha: {}", t.getMessage());
-        throw new BusinessException("Os sistemas de validação de salas/usuários estão temporariamente indisponíveis. Tente novamente em instantes.");
+        throw new BusinessException("Os sistemas de validação estão temporariamente indisponíveis. Tente novamente em instantes.");
     }
 
     @Transactional
@@ -132,21 +126,17 @@ public class BookingService {
 
         validateDates(newStart, newEnd);
 
-        boolean conflict = bookingRepository.existsConflictingBookingExcludingId(
-                booking.getRoomId(), newStart, newEnd, id);
-
+        boolean conflict = bookingRepository.existsConflictingBookingExcludingId(booking.getRoomId(), newStart, newEnd, id);
         if (conflict) {
             throw new BusinessException("Conflito: O novo horário escolhido já está ocupado por outra reserva.");
         }
 
         booking.setStartTime(newStart);
         booking.setEndTime(newEnd);
-
         Booking updated = bookingRepository.save(booking);
         BookingResponseDTO response = new BookingResponseDTO(updated);
 
         dispatchEvents(response, "RESERVA_REAGENDADA");
-
         return response;
     }
 
@@ -154,10 +144,8 @@ public class BookingService {
     public void cancelBooking(UUID id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Reserva não encontrada."));
-
         booking.setStatus(BookingStatus.CANCELLED);
         Booking updated = bookingRepository.save(booking);
-
         dispatchEvents(new BookingResponseDTO(updated), "RESERVA_CANCELADA");
     }
 
@@ -165,9 +153,7 @@ public class BookingService {
     public void deleteBookingPermanently(UUID id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Reserva não encontrada."));
-
         bookingRepository.delete(booking);
-
         try {
             auditPublisher.sendAuditEvent("RESERVA_DELETADA", "Reserva ID: " + id + " foi apagada permanentemente.");
         } catch (Exception e) {
@@ -175,31 +161,16 @@ public class BookingService {
         }
     }
 
-    // --- MÉTODOS DE APOIO ---
-
     private void validateDates(LocalDateTime start, LocalDateTime end) {
-        if (start == null || end == null) {
-            throw new BusinessException("Datas de início e fim são obrigatórias.");
-        }
-        if (start.isAfter(end) || start.isEqual(end)) {
-            throw new BusinessException("A data de início deve ser anterior à data de fim.");
-        }
-        if (start.isBefore(LocalDateTime.now())) {
-            throw new BusinessException("Não é permitido agendar reservas no passado.");
-        }
+        if (start == null || end == null) throw new BusinessException("Datas de início e fim são obrigatórias.");
+        if (start.isAfter(end) || start.isEqual(end)) throw new BusinessException("A data de início deve ser anterior à data de fim.");
+        if (start.isBefore(LocalDateTime.now())) throw new BusinessException("Não é permitido agendar reservas no passado.");
     }
 
+    // Deixamos a exceção subir naturalmente para o Circuit Breaker capturar e processar no Fallback
     private void validateRoomAndUser(UUID roomId, UUID userId) {
-        try {
-            roomClient.getRoomById(roomId);
-        } catch (Exception e) {
-            throw new BusinessException("Sala não encontrada ou serviço de salas fora do ar.");
-        }
-        try {
-            userClient.getUserById(userId);
-        } catch (Exception e) {
-            throw new BusinessException("Usuário não encontrado ou serviço de usuários fora do ar.");
-        }
+        roomClient.getRoomById(roomId);
+        userClient.getUserById(userId);
     }
 
     private void dispatchEvents(BookingResponseDTO response, String action) {
@@ -208,7 +179,6 @@ public class BookingService {
         } catch (Exception e) {
             log.error("Erro ao publicar evento no RabbitMQ: {}", e.getMessage());
         }
-
         try {
             String details = String.format("Reserva ID: %s | Sala ID: %s | Usuário ID: %s",
                     response.getId(), response.getRoomId(), response.getUserId());
