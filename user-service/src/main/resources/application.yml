@@ -1,21 +1,17 @@
 server:
   port: 8081
+  forward-headers-strategy: framework # CORREÇÃO: Lê os cabeçalhos do Gateway para corrigir o redirect_uri do OAuth2
 
 spring:
   application:
     name: user-service
   datasource:
-    url: jdbc:postgresql://localhost:5441/user_db
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5441/user_db}
     username: user_user
     password: user_pass
-    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
   security:
     oauth2:
       client:
@@ -23,30 +19,16 @@ spring:
           github:
             client-id: ${GITHUB_CLIENT_ID}
             client-secret: ${GITHUB_CLIENT_SECRET}
-            scope:
-              - read:user
-              - user:email
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
 
-application:
-  security:
-    jwt:
-      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-      expiration: 86400000
-
-# --- NOVO: CONFIGURAÇÃO DO EUREKA CLIENT ---
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
-# Configuração de Observabilidade e Tracing
 management:
   tracing:
     sampling:
-      probability: 1.0 # 1.0 significa 100% (Rastreia TODAS as requisições). Em prod, seria 0.1 (10%) para poupar recursos.
+      probability: 1.0
   zipkin:
     tracing:
-      endpoint: "http://localhost:9411/api/v2/spans"
+      endpoint: ${MANAGEMENT_ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}

@@ -1,6 +1,5 @@
 package com.roomres.user_service.controller;
 
-import com.roomres.user_service.security.CustomUserDetailsService;
 import com.roomres.user_service.security.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -8,9 +7,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -20,16 +21,7 @@ import java.util.Map;
 public class AuthController {
 
     private final JwtService jwtService;
-    private final CustomUserDetailsService userDetailsService;
-
-    @Operation(summary = "Dados do usuário logado via GitHub")
-    @GetMapping("/user")
-    public Map<String, Object> user(@AuthenticationPrincipal OAuth2User principal) {
-        if (principal == null) {
-            return Map.of("error", "Usuário não autenticado. Faça login via /oauth2/authorization/github");
-        }
-        return principal.getAttributes();
-    }
+    private final UserDetailsService userDetailsService;
 
     @Operation(summary = "Gerar token de desenvolvimento", description = "Gera um JWT válido para testes locais.")
     @GetMapping("/dev/token")
@@ -37,5 +29,25 @@ public class AuthController {
         UserDetails user = userDetailsService.loadUserByUsername(email);
         String token = jwtService.generateToken(user);
         return ResponseEntity.ok(token);
+    }
+
+    // CORREÇÃO: Endpoint /me adicionado para receber o redirecionamento pós-login do GitHub
+    @Operation(summary = "Dados do usuário logado via GitHub")
+    @GetMapping("/me")
+    public ResponseEntity<Map<String, Object>> getMyProfile(
+            @AuthenticationPrincipal OAuth2User principal,
+            @RequestParam(required = false) String token) {
+
+        if (principal == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        // Retorna os dados do GitHub + o Token JWT gerado para facilitar a cópia no navegador!
+        Map<String, Object> response = new HashMap<>(principal.getAttributes());
+        if (token != null) {
+            response.put("jwt_token_para_uso_no_postman", token);
+        }
+
+        return ResponseEntity.ok(response);
     }
 }
