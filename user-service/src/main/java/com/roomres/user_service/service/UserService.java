@@ -41,15 +41,22 @@ public class UserService {
         return userRepository.save(user);
     }
 
+
     @Transactional
     public User updateUser(UUID id, User userDetails) {
         return userRepository.findById(id).map(user -> {
-            user.setName(userDetails.getName());
-            user.setEmail(userDetails.getEmail());
-            // Atualiza a ROLE com segurança
+
+            // Correção: Padrão PATCH real (só atualiza se o campo vier no JSON)
+            if (userDetails.getName() != null) {
+                user.setName(userDetails.getName());
+            }
+            if (userDetails.getEmail() != null) {
+                user.setEmail(userDetails.getEmail());
+            }
             if (userDetails.getRole() != null) {
                 user.setRole(userDetails.getRole().toUpperCase());
             }
+
             return userRepository.save(user);
         }).orElseThrow(() -> new RuntimeException("Usuário não encontrado."));
     }
