@@ -69,29 +69,27 @@ class BookingIntegrationTest {
     @Test
     @DisplayName("Deve criar uma reserva e disparar eventos para RabbitMQ e Kafka com sucesso")
     void shouldCreateBookingAndPublishEvents() {
-        // Arrange (Preparação)
+        // Arrange
         UUID roomId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        // Simulamos que o Room e o User existem (retorno HTTP 200)
-        Mockito.when(roomClient.getRoomById(any())).thenReturn(new Object());
-        Mockito.when(userClient.getUserById(any())).thenReturn(new Object());
+        // CORREÇÃO: O Feign agora precisa devolver Maps simulando o JSON real com nomes!
+        java.util.Map<String, Object> mockRoom = java.util.Map.of("name", "Sala VIP Teste");
+        java.util.Map<String, Object> mockUser = java.util.Map.of("email", "test@roomres.com", "name", "Test User");
+
+        org.mockito.Mockito.when(roomClient.getRoomById(any())).thenReturn(mockRoom);
+        org.mockito.Mockito.when(userClient.getUserById(any())).thenReturn(mockUser);
 
         BookingRequestDTO request = new BookingRequestDTO();
         request.setRoomId(roomId);
         request.setUserId(userId);
-        request.setStartTime(LocalDateTime.now().plusDays(1)); // Amanhã
+        request.setStartTime(LocalDateTime.now().plusDays(1));
         request.setEndTime(LocalDateTime.now().plusDays(1).plusHours(2));
 
-        // Act (Ação)
+        // Act
         BookingResponseDTO response = bookingService.createBooking(request);
 
-        // Assert (Validação)
-        assertNotNull(response.getId(), "O ID da reserva não deveria ser nulo (salvou no banco)");
-
-        // Se chegou até aqui sem exceções, significa que:
-        // 1. Salvou no banco efêmero gerado pelo Testcontainers.
-        // 2. Conectou no RabbitMQ efêmero e enviou a notificação.
-        // 3. Conectou no Kafka efêmero e publicou a auditoria.
+        // Assert
+        org.junit.jupiter.api.Assertions.assertNotNull(response.getId(), "O ID não deveria ser nulo");
     }
 }
