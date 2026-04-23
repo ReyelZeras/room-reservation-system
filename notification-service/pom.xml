@@ -42,6 +42,12 @@
 			<artifactId>spring-boot-starter-amqp</artifactId>
 		</dependency>
 
+		<!-- Spring Boot Mail Starter -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
 		<!-- Infraestrutura: Service Discovery (Eureka) -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>

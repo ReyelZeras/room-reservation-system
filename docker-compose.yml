@@ -246,6 +246,9 @@ services:
     environment:
       - SPRING_RABBITMQ_HOST=rabbitmq
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      # ADICIONADO: Injeção das variáveis do .env para dentro do contêiner
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
     networks:
       - roomres-network
 

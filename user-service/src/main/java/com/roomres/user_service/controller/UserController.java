@@ -20,20 +20,18 @@ public class UserController {
 
     private final UserService userService;
 
-    @Operation(summary = "Ping de saúde", description = "Verifica se o serviço de usuários está respondendo.")
+    @Operation(summary = "Ping de saúde")
     @GetMapping("/health/ping")
     public String ping() {
         return "User Service is UP and Running!";
     }
 
-    // CORREÇÃO: Rota que lista todos os usuários estava faltando!
     @Operation(summary = "Lista todos os usuários")
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userService.findAll());
     }
 
-    // CORREÇÃO: Rota que busca por ID estava faltando! É vital para o BookingService validar o usuário!
     @Operation(summary = "Busca usuário por ID")
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable UUID id) {
@@ -42,15 +40,25 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Atualiza um usuário")
+    // NOVO ENDPOINT DE CADASTRO
+    @Operation(summary = "Cria um novo usuário manualmente (Local)")
+    @ApiResponse(responseCode = "201", description = "Usuário criado")
+    @PostMapping
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        User saved = userService.createUser(user);
+        return ResponseEntity.status(201).body(saved);
+    }
+
+    @Operation(summary = "Atualiza um usuário (Incluindo ROLE)")
     @ApiResponse(responseCode = "200", description = "Usuário atualizado com sucesso")
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable UUID id, @RequestBody User userDetails) {
-        return userService.findById(id).map(user -> {
-            user.setName(userDetails.getName());
-            user.setEmail(userDetails.getEmail());
-            return ResponseEntity.ok(userService.save(user));
-        }).orElse(ResponseEntity.notFound().build());
+        try {
+            User updated = userService.updateUser(id, userDetails);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @Operation(summary = "Deletar usuário")
