@@ -1,4 +1,4 @@
-name: Integração Contínua - Ecossistema Completo
+name: Integracao Continua e Deploy (CI/CD)
 
 on:
   push:
@@ -7,12 +7,11 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-test:
+  build-test-and-push:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # A matriz define quais pastas (serviços) serão testadas independentemente.
         service:
           - user-service
           - room-service
@@ -21,10 +20,10 @@ jobs:
           - notification-service
           - discovery-service
           - gateway-service
-          - suggestion-service # Nosso Quarkus!
+          - suggestion-service
 
     steps:
-      - name: Baixar o código do repositório
+      - name: Baixar o codigo do repositorio
         uses: actions/checkout@v4
 
       - name: Configurar o Java 17
@@ -34,41 +33,50 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Subir Infraestrutura de Apoio (Bancos, RabbitMQ, Kafka)
+      - name: Subir Infraestrutura de Apoio (Testcontainers e BDs)
         run: docker compose up -d
 
-      - name: Aguardar prontidão total da Infraestrutura (Healthcheck manual)
-        run: sleep 45 # Dá tempo para o RabbitMQ e Kafka bootarem completamente
+      - name: Aguardar prontidao total da Infraestrutura
+        run: sleep 45
 
       # ==========================================
-      # BUILD PARA SERVIÇOS SPRING BOOT
+      # BUILD E TESTES
       # ==========================================
-      - name: Build e Testes Automáticos (Spring Boot)
+      - name: Build e Testes Automaticos (Spring Boot)
         if: ${{ matrix.service != 'suggestion-service' }}
         working-directory: ./${{ matrix.service }}
         run: |
-          # Gateway, Discovery e Notification não possuem testes pesados de integração ainda.
-          # Vamos compilar pulando testes para eles passarem no CI.
-          if [[ "${{ matrix.service }}" == "discovery-service" || "${{ matrix.service }}" == "gateway-service" || "${{ matrix.service }}" == "notification-service" ]]; then
+          if [ "${{ matrix.service }}" == "discovery-service" ] || [ "${{ matrix.service }}" == "gateway-service" ] || [ "${{ matrix.service }}" == "notification-service" ]; then
             mvn clean install -DskipTests
           else
-            # Para User, Room, Booking e Audit, rodamos todos os testes (Verify)
-            # Desligamos a auto-configuração do Eureka para os testes não falharem caçando a porta 8761
-            mvn clean verify \
-            -Dspring.cloud.discovery.enabled=false \
-            -Dspring.cloud.config.enabled=false \
-            -Dspring.cloud.service-registry.auto-registration.enabled=false
+            mvn clean verify -Dspring.cloud.discovery.enabled=false -Dspring.cloud.config.enabled=false -Dspring.cloud.service-registry.auto-registration.enabled=false
           fi
 
-      # ==========================================
-      # BUILD PARA O SERVIÇO QUARKUS
-      # ==========================================
-      - name: Build Automático (Quarkus)
+      - name: Build Automatico (Quarkus)
         if: ${{ matrix.service == 'suggestion-service' }}
         working-directory: ./${{ matrix.service }}
         run: |
-          # O Quarkus compila usando o goal quarkus:build.
           mvn clean package -Dquarkus.build.skip=false
+
+      # ==========================================
+      # DEPLOY CONTINUO (DOCKER HUB)
+      # Só executa se for push na Main e os testes passarem
+      # ==========================================
+      - name: Login no Docker Hub
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Construir e Publicar Imagem Docker
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        working-directory: ./${{ matrix.service }}
+        run: |
+          # Constrói a imagem usando o Dockerfile da pasta do serviço
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest .
+          # Empurra para a nuvem
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
 
       - name: Desligar Infraestrutura
         if: always()
