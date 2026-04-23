@@ -11,13 +11,18 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonIgnoreProperties(ignoreUnknown = true) // REGRA DE OURO: Ignora campos desconhecidos no JSON
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BookingNotificationDTO {
     private UUID id;
     private UUID roomId;
     private UUID userId;
+
+    private String userEmail;
+    private String userName; // Novo
+    private String roomName; // Novo
+
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String status;
-    private LocalDateTime createdAt; // Adicionado para espelhar perfeitamente
+    private LocalDateTime createdAt;
 }
