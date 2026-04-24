@@ -1,8 +1,8 @@
-package com.roomres.room_service.model;
+    package com.roomres.room_service.model;
 
-public enum RoomStatus {
-    AVAILABLE,
-    OCCUPIED,
-    MAINTENANCE
-}
+    public enum RoomStatus {
+        AVAILABLE,
+        OCCUPIED,
+        MAINTENANCE
+    }
 
