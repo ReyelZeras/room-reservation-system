@@ -15,7 +15,8 @@ public class RouteValidator {
             "/api/v1/notifications/stream", // ADICIONADO: Libera a conexão SSE nativa do navegador
             "/eureka",
             "/v3/api-docs",
-            "/swagger-ui"
+            "/swagger-ui",
+            "/api/v1/suggestions"
     );
 
     // Função que verifica se o caminho atual da requisição PRECISA ser validado
