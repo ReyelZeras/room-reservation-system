@@ -1,18 +1,19 @@
 package com.roomres.user_service.controller;
 
+import com.roomres.user_service.model.User;
+import com.roomres.user_service.repository.UserRepository;
 import com.roomres.user_service.security.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -22,6 +23,7 @@ public class AuthController {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final UserRepository userRepository; // Injetado para buscar o perfil completo na base de dados
 
     @Operation(summary = "Gerar token de desenvolvimento", description = "Gera um JWT válido para testes locais.")
     @GetMapping("/dev/token")
@@ -31,23 +33,39 @@ public class AuthController {
         return ResponseEntity.ok(token);
     }
 
-    // CORREÇÃO: Endpoint /me adicionado para receber o redirecionamento pós-login do GitHub
-    @Operation(summary = "Dados do usuário logado via GitHub")
+    @Operation(summary = "Dados do usuário logado", description = "Retorna o perfil completo do usuário que está no contexto de segurança atual.")
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> getMyProfile(
-            @AuthenticationPrincipal OAuth2User principal,
-            @RequestParam(required = false) String token) {
+    public ResponseEntity<User> getMyProfile(Authentication authentication) {
 
-        if (principal == null) {
+        // 1. Verifica se existe uma autenticação válida na requisição
+        if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).build();
         }
 
-        // Retorna os dados do GitHub + o Token JWT gerado para facilitar a cópia no navegador!
-        Map<String, Object> response = new HashMap<>(principal.getAttributes());
-        if (token != null) {
-            response.put("jwt_token_para_uso_no_postman", token);
+        String email = null;
+        Object principal = authentication.getPrincipal();
+
+        // 2. Cenário A: O utilizador logou-se via GitHub (OAuth2)
+        if (principal instanceof OAuth2User oAuth2User) {
+            email = oAuth2User.getAttribute("email");
+            if (email == null) {
+                email = oAuth2User.getAttribute("login") + "@github.com"; // Fallback do GitHub
+            }
+        }
+        // 3. Cenário B: O utilizador logou-se via Angular / Formulário Local (JWT / UserDetails)
+        else if (principal instanceof UserDetails userDetails) {
+            email = userDetails.getUsername();
         }
 
-        return ResponseEntity.ok(response);
+        // 4. Se não conseguiu extrair o e-mail de nenhuma forma, bloqueia
+        if (email == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        // 5. Busca o objeto User completo na base de dados e retorna em JSON
+        Optional<User> userOpt = userRepository.findByEmail(email);
+
+        return userOpt.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(401).build());
     }
 }
