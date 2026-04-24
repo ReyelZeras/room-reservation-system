@@ -13,7 +13,6 @@ spring:
         - id: user-service-route
           uri: lb://user-service
           predicates:
-            # CORREÇÃO: Adicionadas as rotas do OAuth2 e Login
             - Path=/api/v1/auth/**, /api/v1/users/**, /oauth2/**, /login/**
 
         - id: room-service-route
@@ -42,13 +41,5 @@ spring:
 
 eureka:
   client:
-    service-url:
+    serviceUrl:
       defaultZone: http://discovery-service:8761/eureka/
-
-management:
-  tracing:
-    sampling:
-      probability: 1.0
-  zipkin:
-    tracing:
-      endpoint: "http://zipkin:9411/api/v2/spans"
