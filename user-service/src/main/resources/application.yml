@@ -1,6 +1,7 @@
 server:
   port: 8081
-  forward-headers-strategy: framework # CORREÇÃO: Lê os cabeçalhos do Gateway para corrigir o redirect_uri do OAuth2
+
+forward-headers-strategy: framework
 
 spring:
   application:
@@ -12,6 +13,14 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+
+  # NOVO: Configuração do RabbitMQ com Variável de Ambiente
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: 5672
+    username: guest
+    password: guest
+
   security:
     oauth2:
       client:
