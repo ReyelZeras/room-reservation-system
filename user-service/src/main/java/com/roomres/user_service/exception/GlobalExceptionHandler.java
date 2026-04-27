@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -14,27 +15,21 @@ import java.util.Collections;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiError> handleBusinessExcepiton(BusinessException ex, HttpServletRequest request){
-        ApiError error = ApiError.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Business Rule Violation")
-                .message(ex.getMessage())
-                .path(request.getRequestURI())
-                .build();
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<ApiError> handleBusinessException(BusinessException ex, HttpServletRequest request) {
+        return buildError(HttpStatus.BAD_REQUEST, "Violação de Regra de Negócio", ex.getMessage(), request);
     }
 
+    // CORREÇÃO: Captura Senha Incorreta -> Devolve 401
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiError> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
-        ApiError error = ApiError.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.UNAUTHORIZED.value())
-                .error("Unauthorized")
-                .message("Credenciais inválidas ou token expirado")
-                .path(request.getRequestURI())
-                .build();
-        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+        return buildError(HttpStatus.UNAUTHORIZED, "Não Autorizado", "E-mail ou senha incorretos.", request);
+    }
+
+    // CORREÇÃO: Captura E-mail Inexistente -> Devolve 401 (E não mais 500!).
+    // Usamos a mesma mensagem genérica por motivos de Segurança (não vazar quais e-mails existem no BD).
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<ApiError> handleUsernameNotFound(UsernameNotFoundException ex, HttpServletRequest request) {
+        return buildError(HttpStatus.UNAUTHORIZED, "Não Autorizado", "E-mail ou senha incorretos.", request);
     }
 
     @ExceptionHandler(Exception.class)
@@ -48,5 +43,16 @@ public class GlobalExceptionHandler {
                 .details(Collections.singletonList(ex.getMessage()))
                 .build();
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private ResponseEntity<ApiError> buildError(HttpStatus status, String errorStr, String message, HttpServletRequest request) {
+        ApiError error = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(status.value())
+                .error(errorStr)
+                .message(message)
+                .path(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(error, status);
     }
 }

@@ -21,12 +21,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado com o e-mail: " + email));
 
-        // Aqui você mapeia a role do seu User (se tiver) para as authorities do Spring Security
-        // Assumindo um fluxo básico onde todos são ROLE_USER por padrão
+        // CORREÇÃO DEFINITIVA: Passa a senha real do banco de dados (Hash BCrypt) para o Spring Security comparar!
+        String rolePrefix = user.getRole() != null ? user.getRole().toUpperCase() : "USER";
+
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
-                "", // Senha vazia pois a autenticação é via OAuth2
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                user.getPassword() != null ? user.getPassword() : "", // Senha real do BD!
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + rolePrefix))
         );
     }
 }
