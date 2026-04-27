@@ -8,7 +8,8 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
     Optional<User> findByProviderId(String providerId);
-
-    // NOVO MÉTODO: Permite verificar se um username já está em uso
     Optional<User> findByUsername(String username);
+
+    // NOVO: Para encontrar o usuário quando ele clicar no link do e-mail
+    Optional<User> findByVerificationToken(String token);
 }

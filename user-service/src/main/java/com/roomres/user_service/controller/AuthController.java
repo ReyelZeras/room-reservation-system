@@ -4,6 +4,7 @@ import com.roomres.user_service.dto.LoginRequestDTO;
 import com.roomres.user_service.model.User;
 import com.roomres.user_service.repository.UserRepository;
 import com.roomres.user_service.security.JwtService;
+import com.roomres.user_service.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,19 @@ public class AuthController {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final AuthenticationManager authenticationManager;
+    private final UserService userService;
 
+
+    @Operation(summary = "Verificar e-mail", description = "Valida o token de registro e ativa a conta.")
+    @GetMapping("/verify")
+    public ResponseEntity<String> verifyEmail(@RequestParam String token) {
+        boolean isVerified = userService.verifyEmail(token);
+        if (isVerified) {
+            return ResponseEntity.ok("E-mail verificado com sucesso!");
+        } else {
+            return ResponseEntity.badRequest().body("Token inválido ou expirado.");
+        }
+    }
     @Operation(summary = "Login com Email e Senha real", description = "Valida a senha via BCrypt no banco e retorna o JWT.")
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody LoginRequestDTO request) {

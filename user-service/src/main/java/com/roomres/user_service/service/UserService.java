@@ -1,6 +1,7 @@
 package com.roomres.user_service.service;
 
 import com.roomres.user_service.model.User;
+import com.roomres.user_service.publisher.UserEventPublisher;
 import com.roomres.user_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,6 +18,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserEventPublisher userEventPublisher;
 
     public List<User> findAll() {
         return userRepository.findAll();
@@ -36,7 +38,29 @@ public class UserService {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
 
+        user.setActive(false);
+        user.setVerificationToken(UUID.randomUUID().toString());
+
+        User savedUser = userRepository.save(user);
+
+        // Disparar e-mail assíncrono
+        userEventPublisher.sendVerificationEmailEvent(savedUser.getEmail(), savedUser.getName(), savedUser.getVerificationToken());
+
+
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public boolean verifyEmail(String token) {
+        Optional<User> userOpt = userRepository.findByVerificationToken(token);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setActive(true);
+            user.setVerificationToken(null); // Apaga o token para não ser reutilizado
+            userRepository.save(user);
+            return true;
+        }
+        return false;
     }
 
     @Transactional
