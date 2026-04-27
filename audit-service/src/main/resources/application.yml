@@ -5,7 +5,7 @@ spring:
   application:
     name: audit-service
   datasource:
-    url: jdbc:postgresql://localhost:5443/audit_db
+    url: jdbc:postgresql://localhost:5444/audit_db # CORREÇÃO: Porta 5444 (audit-db) e não 5443 (booking-db)
     username: audit_user
     password: audit_pass
     driver-class-name: org.postgresql.Driver
@@ -21,10 +21,9 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
-  # Configuração do Spring Batch e Quartz
   batch:
     jdbc:
-      initialize-schema: always # Cria as tabelas BATCH_JOB_* de controle
+      initialize-schema: always
   quartz:
     job-store-type: memory
 
