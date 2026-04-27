@@ -2,7 +2,6 @@ package com.roomres.user_service.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -14,7 +13,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class User {
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -28,8 +26,6 @@ public class User {
     @Column(nullable = false)
     private String name;
 
-    // FIM DA GAMBIARRA: Campo de senha real adicionado!
-    // (O Lombok irá gerar o getPassword() e setPassword() automaticamente)
     @Column(name = "password")
     private String password;
 
@@ -44,14 +40,17 @@ public class User {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    // NOVOS CAMPOS PARA O DOUBLE OPT-IN
+    @Column(nullable = false)
+    private boolean active;
+
+    @Column(name = "verification_token")
+    private String verificationToken;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        if (role == null) {
-            role = "USER";
-        }
-        if (provider == null) {
-            provider = "local";
-        }
+        if (role == null) role = "USER";
+        if (provider == null) provider = "local";
     }
 }

@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -19,17 +20,20 @@ public class GlobalExceptionHandler {
         return buildError(HttpStatus.BAD_REQUEST, "Violação de Regra de Negócio", ex.getMessage(), request);
     }
 
-    // CORREÇÃO: Captura Senha Incorreta -> Devolve 401
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiError> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
         return buildError(HttpStatus.UNAUTHORIZED, "Não Autorizado", "E-mail ou senha incorretos.", request);
     }
 
-    // CORREÇÃO: Captura E-mail Inexistente -> Devolve 401 (E não mais 500!).
-    // Usamos a mesma mensagem genérica por motivos de Segurança (não vazar quais e-mails existem no BD).
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ApiError> handleUsernameNotFound(UsernameNotFoundException ex, HttpServletRequest request) {
         return buildError(HttpStatus.UNAUTHORIZED, "Não Autorizado", "E-mail ou senha incorretos.", request);
+    }
+
+    // A MÁGICA AQUI: Se a conta não estiver ativa (falta clicar no e-mail), devolve Erro 403 amigável
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiError> handleDisabledException(DisabledException ex, HttpServletRequest request) {
+        return buildError(HttpStatus.FORBIDDEN, "Conta Inativa", "Conta inativa. Por favor, verifique o seu e-mail.", request);
     }
 
     @ExceptionHandler(Exception.class)
