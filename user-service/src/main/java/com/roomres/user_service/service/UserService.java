@@ -3,6 +3,7 @@ package com.roomres.user_service.service;
 import com.roomres.user_service.model.User;
 import com.roomres.user_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public List<User> findAll() {
         return userRepository.findAll();
@@ -24,37 +26,28 @@ public class UserService {
         return userRepository.findById(id);
     }
 
-    public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
-
-    // ==========================================
-    // MÉTODOS CRUD (Adicionados para o Angular/Testes)
-    // ==========================================
-
     @Transactional
     public User createUser(User user) {
-        user.setProvider("local");
         if (user.getRole() == null || user.getRole().isEmpty()) {
-            user.setRole("USER"); // Default
+            user.setRole("USER");
         }
+
+        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
+
         return userRepository.save(user);
     }
-
 
     @Transactional
     public User updateUser(UUID id, User userDetails) {
         return userRepository.findById(id).map(user -> {
+            if (userDetails.getName() != null) user.setName(userDetails.getName());
+            if (userDetails.getEmail() != null) user.setEmail(userDetails.getEmail());
+            if (userDetails.getRole() != null) user.setRole(userDetails.getRole().toUpperCase());
 
-            // Correção: Padrão PATCH real (só atualiza se o campo vier no JSON)
-            if (userDetails.getName() != null) {
-                user.setName(userDetails.getName());
-            }
-            if (userDetails.getEmail() != null) {
-                user.setEmail(userDetails.getEmail());
-            }
-            if (userDetails.getRole() != null) {
-                user.setRole(userDetails.getRole().toUpperCase());
+            if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
+                user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
             }
 
             return userRepository.save(user);
@@ -66,34 +59,38 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    // ==========================================
-    // MÉTODOS OAUTH2 E TESTES RESTAURADOS
-    // ==========================================
-
-    // Método vital para o UserServiceTest passar!
+    // =========================================================================
+    // LOGIN SOCIAL: Agora com proteção contra colisão de Username
+    // =========================================================================
     @Transactional
-    public User save(User user) {
-        return userRepository.save(user);
-    }
+    public User processOAuthUser(String email, String username, String name, String provider, String providerId) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
 
-    // Método vital para a compilação do CustomOAuth2UserService
-    @Transactional
-    public User processOAuthUser(String email, String login, String name, String providerId) {
-        return userRepository.findByEmail(email)
-                .map(user -> {
-                    user.setName(name);
-                    return userRepository.save(user);
-                })
-                .orElseGet(() -> {
-                    User newUser = User.builder()
-                            .username(login != null ? login : email) // Fallback caso o github não mande login
-                            .email(email)
-                            .name(name)
-                            .provider("github")
-                            .providerId(providerId)
-                            .role("USER")
-                            .build();
-                    return userRepository.save(newUser);
-                });
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            if (user.getProviderId() == null) {
+                user.setProvider(provider);
+                user.setProviderId(providerId);
+                userRepository.save(user);
+            }
+            return user;
+        }
+
+        // Se o usuário é novo, preparamos o Username
+        String finalUsername = username;
+
+        // A MÁGICA DE PREVENÇÃO: Se já existir alguém com esse username no banco, adiciona sufixo aleatório!
+        if (userRepository.findByUsername(username).isPresent()) {
+            finalUsername = username + "_" + UUID.randomUUID().toString().substring(0, 5);
+        }
+
+        User newUser = new User();
+        newUser.setEmail(email);
+        newUser.setUsername(finalUsername); // Username 100% Único e livre de erros!
+        newUser.setName(name != null ? name : finalUsername);
+        newUser.setProvider(provider);
+        newUser.setProviderId(providerId);
+        newUser.setRole("USER");
+        return userRepository.save(newUser);
     }
 }

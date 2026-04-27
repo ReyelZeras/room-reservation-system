@@ -13,7 +13,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserService userService;
 
-    // Injetamos o UserService em vez do UserRepository diretamente
     public CustomOAuth2UserService(UserService userService){
         this.userService = userService;
     }
@@ -26,14 +25,18 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String providerId = Objects.toString(attributes.get("id"), null);
         String email = (String) attributes.get("email");
         String name = (String) attributes.get("name");
-        String login = (String) attributes.get("login");
+        String login = (String) attributes.get("login"); // Username vindo do GitHub
 
         if (email == null) {
             email = login + "@github.com";
         }
 
-        // Delega toda a regra de negócio e persistência para o UserService
-        userService.processOAuthUser(login, email, name, providerId);
+        // Extrai o nome do provedor dinamicamente (ex: "github")
+        String provider = userRequest.getClientRegistration().getRegistrationId();
+
+        // CORREÇÃO: Passando os 5 parâmetros EXATAMENTE na ordem que o UserService exige:
+        // (email, username, name, provider, providerId)
+        userService.processOAuthUser(email, login, name, provider, providerId);
 
         return oAuth2User;
     }
