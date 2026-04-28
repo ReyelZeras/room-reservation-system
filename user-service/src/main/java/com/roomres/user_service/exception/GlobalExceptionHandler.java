@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -33,10 +34,18 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ApiError> handleDisabledException(DisabledException ex, HttpServletRequest request) {
-        return buildError(HttpStatus.FORBIDDEN, "Conta Inativa", "Conta inativa. Por favor, verifique o seu e-mail.", request);
+        return buildError(HttpStatus.FORBIDDEN, "Conta Inativa", "A sua conta está inativa. Por favor, verifique a sua caixa de e-mail e clique no link de ativação.", request);
     }
 
-    // NOVA BARREIRA: Captura duplicações do banco (Unique Constraint)
+    // NOVA PROTEÇÃO: Caso o Spring Security encapsule a exceção nativa
+    @ExceptionHandler(InternalAuthenticationServiceException.class)
+    public ResponseEntity<ApiError> handleInternalAuth(InternalAuthenticationServiceException ex, HttpServletRequest request) {
+        if (ex.getCause() instanceof DisabledException || ex.getMessage().contains("User is disabled")) {
+            return buildError(HttpStatus.FORBIDDEN, "Conta Inativa", "A sua conta está inativa. Por favor, verifique a sua caixa de e-mail e clique no link de ativação.", request);
+        }
+        return buildError(HttpStatus.UNAUTHORIZED, "Não Autorizado", "E-mail ou senha incorretos.", request);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
         return buildError(HttpStatus.CONFLICT, "Conflito de Dados", "O e-mail ou nome de usuário informado já existe.", request);

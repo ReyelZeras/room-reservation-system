@@ -53,4 +53,37 @@ public class UserEventConsumer {
             log.error("❌ Erro crítico ao enviar e-mail de ativação: {}", e.getMessage());
         }
     }
+
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_PASSWORD_RESET)
+    public void processPasswordReset(Map<String, String> payload) {
+        String email = payload.get("email");
+        String name = payload.get("name");
+        String token = payload.get("token");
+        String resetUrl = "http://localhost:4200/reset-password?token=" + token;
+
+        log.info("🔔 Recebido pedido de reset de senha. Enviando e-mail para: {}", email);
+
+        try {
+            jakarta.mail.internet.MimeMessage message = mailSender.createMimeMessage();
+            org.springframework.mail.javamail.MimeMessageHelper helper = new org.springframework.mail.javamail.MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(email);
+            helper.setSubject("RoomRes - Recuperação de Senha");
+
+            String htmlContent = "<h2>Olá, " + name + "</h2>"
+                    + "<p>Recebemos um pedido para redefinir a senha da sua conta.</p>"
+                    + "<p>Se não foi você, pode ignorar este e-mail em segurança.</p>"
+                    + "<a href='" + resetUrl + "' style='display: inline-block; padding: 10px 20px; font-size: 16px; color: #fff; background-color: #EF4444; text-decoration: none; border-radius: 5px; margin-top: 15px;'>Redefinir Minha Senha</a>"
+                    + "<br><br><p>Ou copie e cole este link no navegador:</p>"
+                    + "<p><small>" + resetUrl + "</small></p>";
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+            log.info("✅ E-mail de redefinição enviado com sucesso!");
+        } catch (Exception e) {
+            log.error("❌ Erro ao enviar e-mail de redefinição: {}", e.getMessage());
+        }
+    }
 }

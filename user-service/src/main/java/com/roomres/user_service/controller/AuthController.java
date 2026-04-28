@@ -80,4 +80,27 @@ public class AuthController {
         return userOpt.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(401).build());
     }
+
+    @Operation(summary = "Solicitar redefinição de senha")
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestParam String email) {
+        userService.requestPasswordReset(email);
+        return ResponseEntity.ok("Se o e-mail existir na nossa base, receberá um link de recuperação em breve.");
+    }
+
+    @Operation(summary = "Executar redefinição de senha")
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestParam String token, @RequestBody java.util.Map<String, String> payload) {
+        String newPassword = payload.get("newPassword");
+        if (newPassword == null || newPassword.isEmpty()) {
+            return ResponseEntity.badRequest().body("Nova senha é obrigatória.");
+        }
+
+        boolean success = userService.resetPassword(token, newPassword);
+        if (success) {
+            return ResponseEntity.ok("Senha redefinida com sucesso.");
+        } else {
+            return ResponseEntity.badRequest().body("Token de recuperação inválido ou expirado.");
+        }
+    }
 }

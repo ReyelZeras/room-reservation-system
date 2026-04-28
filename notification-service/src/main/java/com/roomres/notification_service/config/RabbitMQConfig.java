@@ -6,7 +6,6 @@ import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
-import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
@@ -15,56 +14,37 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    public static final String QUEUE_RESERVA_CRIADA = "booking.reservation-created.notification";
+    // Constantes Reservas
     public static final String EXCHANGE_RESERVA = "booking.v1.events";
+    public static final String QUEUE_RESERVA_CRIADA = "booking.reservation-created.notification";
     public static final String ROUTING_KEY_RESERVA_CRIADA = "reservation.created";
 
+    // Constantes Usuários (Email Opt-in e Senha)
     public static final String EXCHANGE_USER = "user.v1.events";
     public static final String QUEUE_USER_REGISTERED = "notification.user-registered";
     public static final String ROUTING_KEY_REGISTERED = "user.registered";
 
-    @Bean
-    public Queue userRegisteredQueue() { return new Queue(QUEUE_USER_REGISTERED, true); }
+    // NOVA FILA E CHAVE PARA RESET DE SENHA
+    public static final String QUEUE_PASSWORD_RESET = "notification.password-reset";
+    public static final String ROUTING_KEY_PASSWORD_RESET = "user.password.reset";
 
-    @Bean
-    public TopicExchange userExchange() { return new TopicExchange(EXCHANGE_USER); }
+    @Bean public TopicExchange reservaExchange() { return new TopicExchange(EXCHANGE_RESERVA); }
+    @Bean public Queue reservaQueue() { return new Queue(QUEUE_RESERVA_CRIADA, true); }
+    @Bean public Binding reservaBinding() { return BindingBuilder.bind(reservaQueue()).to(reservaExchange()).with(ROUTING_KEY_RESERVA_CRIADA); }
 
-    @Bean
-    public Binding userBinding() {
-        return BindingBuilder.bind(userRegisteredQueue()).to(userExchange()).with(ROUTING_KEY_REGISTERED);
-    }
+    // Beans do Opt-in
+    @Bean public TopicExchange userExchange() { return new TopicExchange(EXCHANGE_USER); }
+    @Bean public Queue userRegisteredQueue() { return new Queue(QUEUE_USER_REGISTERED, true); }
+    @Bean public Binding userBinding() { return BindingBuilder.bind(userRegisteredQueue()).to(userExchange()).with(ROUTING_KEY_REGISTERED); }
 
-    // 1. Garante que a Fila será criada
-    @Bean
-    public Queue reservaQueue() {
-        return new Queue(QUEUE_RESERVA_CRIADA, true); // true = durable (sobrevive se o RabbitMQ reiniciar)
-    }
+    // NOVOS BEANS DO RESET DE SENHA
+    @Bean public Queue passwordResetQueue() { return new Queue(QUEUE_PASSWORD_RESET, true); }
+    @Bean public Binding passwordResetBinding() { return BindingBuilder.bind(passwordResetQueue()).to(userExchange()).with(ROUTING_KEY_PASSWORD_RESET); }
 
-    // 2. Garante que o Exchange será criado
-    @Bean
-    public TopicExchange reservaExchange() {
-        return new TopicExchange(EXCHANGE_RESERVA);
-    }
-
-    // 3. Liga a Fila ao Exchange
-    @Bean
-    public Binding reservaBinding(Queue reservaQueue, TopicExchange reservaExchange) {
-        return BindingBuilder.bind(reservaQueue).to(reservaExchange).with(ROUTING_KEY_RESERVA_CRIADA);
-    }
-
-    // Conversor de JSON (Mantido como você já tinha)
     @Bean
     public MessageConverter jsonMessageConverter() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
-
-        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter(mapper);
-
-        // Permite a desserialização de pacotes externos
-        DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
-        typeMapper.setTrustedPackages("*");
-        converter.setJavaTypeMapper(typeMapper);
-
-        return converter;
+        return new Jackson2JsonMessageConverter(mapper);
     }
 }
