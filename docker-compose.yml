@@ -81,18 +81,22 @@ services:
       start_period: 40s
 
   rabbitmq:
-    image: rabbitmq:3-management # CORREÇÃO: Removido o -alpine para evitar Crash no Erlang/GitHub Actions
+    image: rabbitmq:3-management # Sem o -alpine para evitar Crash no Erlang VM no GitHub Actions
     container_name: rabbitmq
+    hostname: rabbitmq # Adicionado para estabilidade do broker
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
     ports:
       - "5672:5672"
       - "15672:15672"
     networks:
       - roomres-network
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping || exit 1"]
       interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 10
       start_period: 40s
 
   zookeeper:
