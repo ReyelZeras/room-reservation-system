@@ -1,6 +1,7 @@
 package com.roomres.user_service.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -30,10 +31,15 @@ public class GlobalExceptionHandler {
         return buildError(HttpStatus.UNAUTHORIZED, "Não Autorizado", "E-mail ou senha incorretos.", request);
     }
 
-    // A MÁGICA AQUI: Se a conta não estiver ativa (falta clicar no e-mail), devolve Erro 403 amigável
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ApiError> handleDisabledException(DisabledException ex, HttpServletRequest request) {
         return buildError(HttpStatus.FORBIDDEN, "Conta Inativa", "Conta inativa. Por favor, verifique o seu e-mail.", request);
+    }
+
+    // NOVA BARREIRA: Captura duplicações do banco (Unique Constraint)
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
+        return buildError(HttpStatus.CONFLICT, "Conflito de Dados", "O e-mail ou nome de usuário informado já existe.", request);
     }
 
     @ExceptionHandler(Exception.class)
