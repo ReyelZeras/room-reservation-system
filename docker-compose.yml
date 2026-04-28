@@ -81,7 +81,7 @@ services:
       start_period: 40s
 
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: rabbitmq:3-management # CORREÇÃO: Removido o -alpine para evitar Crash no Erlang/GitHub Actions
     container_name: rabbitmq
     ports:
       - "5672:5672"
@@ -89,9 +89,9 @@ services:
     networks:
       - roomres-network
     healthcheck:
-      test: rabbitmq-diagnostics -q ping
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 5
       start_period: 40s
 
