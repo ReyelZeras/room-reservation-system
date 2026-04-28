@@ -9,7 +9,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
     Optional<User> findByProviderId(String providerId);
     Optional<User> findByUsername(String username);
-
-    // NOVO: Para encontrar o usuário quando ele clicar no link do e-mail
     Optional<User> findByVerificationToken(String token);
+
+    // NOVO MÉTODO
+    Optional<User> findByResetPasswordToken(String token);
 }

@@ -1,6 +1,7 @@
 package com.roomres.user_service;
 
 import com.roomres.user_service.model.User;
+import com.roomres.user_service.publisher.UserEventPublisher;
 import com.roomres.user_service.repository.UserRepository;
 import com.roomres.user_service.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,9 +27,12 @@ class UserServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    // CORREÇÃO 1: Precisamos de fazer Mock do PasswordEncoder que adicionámos ao UserService
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    // A MÁGICA QUE FALTAVA: O Mock do mensageiro do RabbitMQ!
+    @Mock
+    private UserEventPublisher userEventPublisher;
 
     @InjectMocks
     private UserService userService;
@@ -41,7 +45,7 @@ class UserServiceTest {
                 .id(UUID.randomUUID())
                 .username("testuser")
                 .email("test@roomres.com")
-                .password("senha123") // Adicionamos uma senha para o teste
+                .password("senha123")
                 .name("Test User")
                 .role("USER")
                 .build();
@@ -62,18 +66,22 @@ class UserServiceTest {
     @Test
     @DisplayName("Deve criar um novo usuário com senha encriptada com sucesso")
     void shouldSaveUser() {
-        // Ensinamos o nosso dublê de PasswordEncoder a devolver uma string qualquer quando for chamado
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        when(userRepository.findByUsername(anyString())).thenReturn(Optional.empty());
         when(passwordEncoder.encode(anyString())).thenReturn("senha_encriptada_mock");
         when(userRepository.save(any(User.class))).thenReturn(user);
 
-        // CORREÇÃO 2: Alterado de userService.save(user) para userService.createUser(user)
+        // Dizemos ao Mock para não fazer nada quando pedirmos para enviar o e-mail (pois é só um teste)
+        doNothing().when(userEventPublisher).sendVerificationEmailEvent(anyString(), anyString(), anyString());
+
         User savedUser = userService.createUser(user);
 
         assertNotNull(savedUser);
         assertEquals("test@roomres.com", savedUser.getEmail());
 
-        // Verificamos se o encriptador de senhas foi realmente invocado!
         verify(passwordEncoder, times(1)).encode("senha123");
         verify(userRepository, times(1)).save(user);
+        // Verifica se o método de disparo de e-mail foi chamado!
+        verify(userEventPublisher, times(1)).sendVerificationEmailEvent(anyString(), anyString(), anyString());
     }
 }

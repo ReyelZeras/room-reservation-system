@@ -5,7 +5,8 @@ spring:
   application:
     name: audit-service
   datasource:
-    url: jdbc:postgresql://localhost:5444/audit_db # CORREÇÃO: Porta 5444 (audit-db) e não 5443 (booking-db)
+    # CORREÇÃO: A porta real no seu docker-compose é a 5443!
+    url: jdbc:postgresql://localhost:5443/audit_db
     username: audit_user
     password: audit_pass
     driver-class-name: org.postgresql.Driver
