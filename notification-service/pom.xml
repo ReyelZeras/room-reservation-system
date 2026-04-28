@@ -30,6 +30,7 @@
 	<!-- 3. DEPENDÊNCIAS DO PROJETO                              -->
 	<!-- ======================================================= -->
 	<dependencies>
+
 		<!-- Core: Reatividade (Spring WebFlux substitui o Web normal) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
