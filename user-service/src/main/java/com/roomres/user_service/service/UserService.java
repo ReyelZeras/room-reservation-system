@@ -1,5 +1,6 @@
 package com.roomres.user_service.service;
 
+import com.roomres.user_service.exception.BusinessException;
 import com.roomres.user_service.model.User;
 import com.roomres.user_service.publisher.UserEventPublisher;
 import com.roomres.user_service.repository.UserRepository;
@@ -30,6 +31,15 @@ public class UserService {
 
     @Transactional
     public User createUser(User user) {
+        // PREVENÇÃO DE SEGURANÇA E DUAL WRITE
+        // Verifica ANTES de fazer qualquer coisa no banco ou disparar e-mails
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            throw new BusinessException("Este e-mail já está registrado no sistema.");
+        }
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+            throw new BusinessException("Este nome de usuário já está em uso.");
+        }
+
         if (user.getRole() == null || user.getRole().isEmpty()) {
             user.setRole("USER");
         }
@@ -43,24 +53,10 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
-        // Disparar e-mail assíncrono
+        // Como validamos antes, é 100% seguro disparar o e-mail agora
         userEventPublisher.sendVerificationEmailEvent(savedUser.getEmail(), savedUser.getName(), savedUser.getVerificationToken());
 
-
-        return userRepository.save(user);
-    }
-
-    @Transactional
-    public boolean verifyEmail(String token) {
-        Optional<User> userOpt = userRepository.findByVerificationToken(token);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            user.setActive(true);
-            user.setVerificationToken(null); // Apaga o token para não ser reutilizado
-            userRepository.save(user);
-            return true;
-        }
-        return false;
+        return savedUser;
     }
 
     @Transactional
@@ -83,9 +79,19 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    // =========================================================================
-    // LOGIN SOCIAL: Agora com proteção contra colisão de Username
-    // =========================================================================
+    @Transactional
+    public boolean verifyEmail(String token) {
+        Optional<User> userOpt = userRepository.findByVerificationToken(token);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setActive(true);
+            user.setVerificationToken(null);
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
+
     @Transactional
     public User processOAuthUser(String email, String username, String name, String provider, String providerId) {
         Optional<User> userOptional = userRepository.findByEmail(email);
@@ -100,21 +106,20 @@ public class UserService {
             return user;
         }
 
-        // Se o usuário é novo, preparamos o Username
         String finalUsername = username;
 
-        // A MÁGICA DE PREVENÇÃO: Se já existir alguém com esse username no banco, adiciona sufixo aleatório!
         if (userRepository.findByUsername(username).isPresent()) {
             finalUsername = username + "_" + UUID.randomUUID().toString().substring(0, 5);
         }
 
         User newUser = new User();
         newUser.setEmail(email);
-        newUser.setUsername(finalUsername); // Username 100% Único e livre de erros!
+        newUser.setUsername(finalUsername);
         newUser.setName(name != null ? name : finalUsername);
         newUser.setProvider(provider);
         newUser.setProviderId(providerId);
         newUser.setRole("USER");
+        newUser.setActive(true); // O GitHub já verificou o email!
         return userRepository.save(newUser);
     }
 }

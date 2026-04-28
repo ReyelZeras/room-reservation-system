@@ -19,6 +19,21 @@ public class RabbitMQConfig {
     public static final String EXCHANGE_RESERVA = "booking.v1.events";
     public static final String ROUTING_KEY_RESERVA_CRIADA = "reservation.created";
 
+    public static final String EXCHANGE_USER = "user.v1.events";
+    public static final String QUEUE_USER_REGISTERED = "notification.user-registered";
+    public static final String ROUTING_KEY_REGISTERED = "user.registered";
+
+    @Bean
+    public Queue userRegisteredQueue() { return new Queue(QUEUE_USER_REGISTERED, true); }
+
+    @Bean
+    public TopicExchange userExchange() { return new TopicExchange(EXCHANGE_USER); }
+
+    @Bean
+    public Binding userBinding() {
+        return BindingBuilder.bind(userRegisteredQueue()).to(userExchange()).with(ROUTING_KEY_REGISTERED);
+    }
+
     // 1. Garante que a Fila será criada
     @Bean
     public Queue reservaQueue() {
