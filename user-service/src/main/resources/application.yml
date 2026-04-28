@@ -13,14 +13,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-
-  # NOVO: Configuração do RabbitMQ com Variável de Ambiente
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: 5672
     username: guest
     password: guest
-
   security:
     oauth2:
       client:
@@ -28,6 +25,9 @@ spring:
           github:
             client-id: ${GITHUB_CLIENT_ID}
             client-secret: ${GITHUB_CLIENT_SECRET}
+            # A MÁGICA ESTÁ AQUI: Força o Spring a usar o localhost do API Gateway
+            # em vez de tentar adivinhar a URL de dentro da rede Docker.
+            redirect-uri: "http://localhost:8080/login/oauth2/code/github"
 
 eureka:
   client:
