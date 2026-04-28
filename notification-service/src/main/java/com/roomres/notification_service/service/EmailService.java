@@ -22,22 +22,26 @@ public class EmailService {
 
     public void sendBookingConfirmation(BookingNotificationDTO dto) {
         try {
-            // Formatador de Datas bonito para o Brasil
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
             String startFormatted = dto.getStartTime().format(formatter);
             String endFormatted = dto.getEndTime().format(formatter);
 
-            // Se o nome vier nulo, chama de "Usuário"
-            String clientName = dto.getUserName() != null ? dto.getUserName() : "Usuário";
-
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(dto.getUserEmail());
-            message.setSubject("Reserva Confirmada - " + dto.getRoomName());
 
-            // Corpo do E-mail Profissional
-            message.setText("Olá, " + clientName + "!\n\n" +
-                    "A sua reserva foi processada e confirmada com sucesso no nosso sistema.\n\n" +
+            // MÁGICA AQUI: Verifica o status para decidir o Assunto e o Texto
+            boolean isCancelled = "CANCELLED".equalsIgnoreCase(dto.getStatus());
+
+            String subject = isCancelled ? "RoomRes - Reserva Cancelada" : "RoomRes - Confirmação de Reserva";
+
+            String introText = isCancelled
+                    ? "A sua reserva foi CANCELADA com sucesso no nosso sistema.\n\n"
+                    : "A sua reserva foi processada e CONFIRMADA com sucesso no nosso sistema.\n\n";
+
+            message.setSubject(subject);
+            message.setText("Olá, " + dto.getUserName() + "!\n\n" +
+                    introText +
                     "📌 Detalhes da Reserva:\n" +
                     "Sala: " + dto.getRoomName() + "\n" +
                     "Entrada: " + startFormatted + "\n" +
@@ -47,7 +51,8 @@ public class EmailService {
                     "Obrigado por utilizar o sistema de reservas corporativo.");
 
             mailSender.send(message);
-            log.info("📧 E-mail formatado enviado com sucesso para: {}", dto.getUserEmail());
+            log.info("📧 E-mail ({}) enviado com sucesso para: {}", dto.getStatus(), dto.getUserEmail());
+
         } catch (Exception e) {
             log.error("❌ Falha ao enviar e-mail para {}: {}", dto.getUserEmail(), e.getMessage());
         }

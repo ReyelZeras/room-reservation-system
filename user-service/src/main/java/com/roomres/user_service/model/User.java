@@ -2,6 +2,7 @@ package com.roomres.user_service.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -13,6 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -40,12 +42,15 @@ public class User {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    // NOVOS CAMPOS PARA O DOUBLE OPT-IN
     @Column(nullable = false)
     private boolean active;
 
     @Column(name = "verification_token")
     private String verificationToken;
+
+    // NOVO CAMPO
+    @Column(name = "reset_password_token")
+    private String resetPasswordToken;
 
     @PrePersist
     protected void onCreate() {

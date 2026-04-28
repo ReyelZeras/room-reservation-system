@@ -122,4 +122,33 @@ public class UserService {
         newUser.setActive(true); // O GitHub já verificou o email!
         return userRepository.save(newUser);
     }
+
+
+    @Transactional
+    public void requestPasswordReset(String email) {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        // Por segurança (evitar enumeração de e-mails), não damos erro se não existir. Ignoramos silenciosamente.
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            // Usuários do GitHub não têm senha local para resetar.
+            if ("local".equals(user.getProvider())) {
+                user.setResetPasswordToken(UUID.randomUUID().toString());
+                userRepository.save(user);
+                userEventPublisher.sendPasswordResetEvent(user.getEmail(), user.getName(), user.getResetPasswordToken());
+            }
+        }
+    }
+
+    @Transactional
+    public boolean resetPassword(String token, String newPassword) {
+        Optional<User> userOpt = userRepository.findByResetPasswordToken(token);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setPassword(passwordEncoder.encode(newPassword));
+            user.setResetPasswordToken(null); // Invalida o token após o uso
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
 }
