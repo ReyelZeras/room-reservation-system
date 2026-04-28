@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +19,7 @@ import java.time.Duration;
 @RequestMapping("/api/v1/notifications")
 @RequiredArgsConstructor
 @Tag(name = "Notifications", description = "Endpoints de tempo real para streaming de eventos")
+@CrossOrigin(origins = "*") // Garante que o Angular consegue aceder
 public class NotificationController {
 
     private final NotificationSink notificationSink;
@@ -40,4 +42,6 @@ public class NotificationController {
 
         return Flux.merge(pingFlux, eventFlux);
     }
+
+
 }

@@ -20,4 +20,10 @@ public class NotificationSink {
     public Flux<BookingNotificationDTO> getFlux() {
         return sink.asFlux(); // Retorna o "cano" para os clientes se conectarem
     }
+
+    // Cria um canal de transmissão (Sink) que envia eventos para múltiplos inscritos (multicast)
+    public void emitNext(BookingNotificationDTO dto) {
+        sink.tryEmitNext(dto);
+    }
+
 }
