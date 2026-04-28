@@ -34,14 +34,13 @@ jobs:
           cache: maven
 
       - name: Subir Infraestrutura de Apoio (Testcontainers e BDs)
-        run: docker compose up -d
+        # OTIMIZAÇÃO: Subimos apenas os bancos e brokers. Sem compilar os microsserviços no Docker!
+        run: docker compose up -d user-db room-db booking-db audit-db rabbitmq zookeeper kafka redis zipkin
 
       - name: Aguardar prontidao total da Infraestrutura
         run: sleep 45
 
-      # ==========================================
       # BUILD E TESTES
-      # ==========================================
       - name: Build e Testes Automaticos (Spring Boot)
         if: ${{ matrix.service != 'suggestion-service' }}
         working-directory: ./${{ matrix.service }}
@@ -58,10 +57,7 @@ jobs:
         run: |
           mvn clean package -Dquarkus.build.skip=false
 
-      # ==========================================
       # DEPLOY CONTINUO (DOCKER HUB)
-      # Só executa se for push na Main e os testes passarem
-      # ==========================================
       - name: Login no Docker Hub
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: docker/login-action@v3
@@ -73,9 +69,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         working-directory: ./${{ matrix.service }}
         run: |
-          # Constrói a imagem usando o Dockerfile da pasta do serviço
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest .
-          # Empurra para a nuvem
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
 
       - name: Desligar Infraestrutura
