@@ -34,11 +34,15 @@ public class NotificationConsumer {
         log.info("🔔 NOTIFICAÇÃO PROCESSADA (Sala: {})", bookingEvent.getRoomName());
         log.info("==================================================");
 
-        // 1. Envia o e-mail
-        emailService.sendBookingConfirmation(bookingEvent);
-
-        // 2. Dispara a Notificação em Tempo Real (SSE) para o Painel do Administrador
+        // CORREÇÃO ARQUITETURAL: INVERSÃO DE ORDEM!
+        // 1. Dispara a Notificação em Tempo Real (SSE) PRIMEIRO.
+        // O Angular recebe em milissegundos e o Sininho toca instantaneamente!
         notificationSink.emitNext(bookingEvent);
+        log.info("📡 Evento SSE disparado com sucesso para a UI!");
+
+        // 2. Envia o e-mail DEPOIS.
+        // O servidor de E-mail pode demorar os 4 segundos dele sem congelar a experiência do utilizador.
+        emailService.sendBookingConfirmation(bookingEvent);
     }
 
     // ==========================================
