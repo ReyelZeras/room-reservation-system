@@ -1,15 +1,18 @@
 package com.roomres.user_service.controller;
 
+import com.roomres.user_service.dto.ChangePasswordRequestDTO;
 import com.roomres.user_service.model.User;
 import com.roomres.user_service.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -67,5 +70,17 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
         userService.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+
+    //NOVA FUNCIONALIDADE: Troca de Senha Interna
+    @Operation(summary = "Alterar Senha Interna", description = "Altera a senha do utilizador mediante a validação da senha atual.")
+    @PutMapping("/{id}/password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @PathVariable UUID id,
+            @Valid @RequestBody ChangePasswordRequestDTO request) {
+
+        userService.changeInternalPassword(id, request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok(Map.of("message", "Senha alterada com sucesso!"));
     }
 }
