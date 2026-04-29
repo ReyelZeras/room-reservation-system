@@ -83,4 +83,11 @@ public class UserController {
         userService.changeInternalPassword(id, request.getCurrentPassword(), request.getNewPassword());
         return ResponseEntity.ok(Map.of("message", "Senha alterada com sucesso!"));
     }
+
+    @Operation(summary = "Alternar Status da Conta", description = "Ativa ou inativa um utilizador (Soft-Delete)")
+    @PutMapping("/{id}/status")
+    public ResponseEntity<User> toggleUserStatus(@PathVariable UUID id) {
+        User updatedUser = userService.toggleUserStatus(id);
+        return ResponseEntity.ok(updatedUser);
+    }
 }
