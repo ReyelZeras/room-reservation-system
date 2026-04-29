@@ -26,6 +26,7 @@ public class BookingEventPublisher {
         payload.put("userId", booking.getUserId());
         payload.put("userEmail", userEmail);
         payload.put("userName", userName); // Novo
+        payload.put("title", booking.getTitle()); // Novo
         payload.put("roomName", roomName); // Novo
         payload.put("startTime", booking.getStartTime());
         payload.put("endTime", booking.getEndTime());

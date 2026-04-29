@@ -20,6 +20,7 @@ public class BookingNotificationDTO {
     private String userEmail;
     private String userName; // Novo
     private String roomName; // Novo
+    private String title; //Novo
 
     private LocalDateTime startTime;
     private LocalDateTime endTime;

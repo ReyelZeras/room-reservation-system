@@ -24,6 +24,9 @@ public class Booking {
     @Column(name = "user_id", nullable = false)
     private UUID userId; // Apenas o ID do usuário que vive no user-service
 
+    @Column(name = "title", nullable = false)
+    private String title;
+
     @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;
 

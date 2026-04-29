@@ -18,6 +18,7 @@ public class BookingResponseDTO {
     private UUID id;
     private UUID roomId;
     private UUID userId;
+    private String title;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private BookingStatus status;
@@ -29,6 +30,7 @@ public class BookingResponseDTO {
             this.id = booking.getId();
             this.roomId = booking.getRoomId();
             this.userId = booking.getUserId();
+            this.title = booking.getTitle();
             this.startTime = booking.getStartTime();
             this.endTime = booking.getEndTime();
             this.status = booking.getStatus();
