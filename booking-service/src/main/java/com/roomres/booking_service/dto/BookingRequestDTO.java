@@ -13,6 +13,7 @@ import java.util.UUID;
 public class BookingRequestDTO {
     private UUID roomId;
     private UUID userId;
+    private String title;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
 }
