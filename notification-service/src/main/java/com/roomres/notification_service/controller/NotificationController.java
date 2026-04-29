@@ -19,19 +19,20 @@ import java.time.Duration;
 @RequestMapping("/api/v1/notifications")
 @RequiredArgsConstructor
 @Tag(name = "Notifications", description = "Endpoints de tempo real para streaming de eventos")
-@CrossOrigin(origins = "*") // Garante que o Angular consegue aceder
+@CrossOrigin(origins = "*")
 public class NotificationController {
 
     private final NotificationSink notificationSink;
 
-    @Operation(summary = "Conectar ao Streaming (SSE)", description = "Abre um canal unidirecional (Server-Sent Events) para receber notificações de novas reservas em tempo real. Mantém a conexão viva enviando um 'ping' a cada 15 segundos.")
+    @Operation(summary = "Streaming de Notificações", description = "Canal SSE para o frontend receber alertas.")
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<BookingNotificationDTO>> streamNotifications() {
 
-        Flux<ServerSentEvent<BookingNotificationDTO>> pingFlux = Flux.interval(Duration.ZERO, Duration.ofSeconds(15))
+        // O Ping não pode ser nulo para não crashar o serializador Jackson do Java
+        Flux<ServerSentEvent<BookingNotificationDTO>> pingFlux = Flux.interval(Duration.ofSeconds(15))
                 .map(sequence -> ServerSentEvent.<BookingNotificationDTO>builder()
                         .event("ping")
-                        .comment("keep-alive")
+                        .data(new BookingNotificationDTO())
                         .build());
 
         Flux<ServerSentEvent<BookingNotificationDTO>> eventFlux = notificationSink.getFlux()
@@ -42,6 +43,4 @@ public class NotificationController {
 
         return Flux.merge(pingFlux, eventFlux);
     }
-
-
 }
