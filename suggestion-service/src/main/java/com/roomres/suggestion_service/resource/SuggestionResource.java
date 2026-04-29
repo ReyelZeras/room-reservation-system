@@ -1,4 +1,4 @@
-package com.roomres.suggestion_service.resource;
+package com.roomres.suggestion_service;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
