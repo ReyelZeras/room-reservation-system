@@ -1,5 +1,6 @@
 package com.roomres.suggestion_service;
 
+
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -7,11 +8,14 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
+
 import java.util.List;
+
 
 @Path("/api/v1/suggestions")
 @Tag(name = "Suggestions", description = "Motor de recomendações de altíssima performance")
 public class SuggestionResource {
+
 
     // Simulação de um motor ultrarrápido de recomendação estática
     @GET
@@ -25,11 +29,13 @@ public class SuggestionResource {
         );
     }
 
+
     // Classe de modelo interna apenas para o retorno (DTO)
     public static class Suggestion {
         public String roomName;
         public String description;
         public int capacity;
+
 
         public Suggestion(String roomName, String description, int capacity) {
             this.roomName = roomName;
@@ -38,3 +44,6 @@ public class SuggestionResource {
         }
     }
 }
+
+
+
