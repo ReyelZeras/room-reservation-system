@@ -73,7 +73,7 @@ class BookingIntegrationTest {
         UUID roomId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        // CORREÇÃO: O Feign agora precisa devolver Maps simulando o JSON real com nomes!
+        // O Feign agora precisa devolver Maps simulando JSON real com nomes!
         java.util.Map<String, Object> mockRoom = java.util.Map.of("name", "Sala VIP Teste");
         java.util.Map<String, Object> mockUser = java.util.Map.of("email", "test@roomres.com", "name", "Test User");
 
@@ -83,6 +83,8 @@ class BookingIntegrationTest {
         BookingRequestDTO request = new BookingRequestDTO();
         request.setRoomId(roomId);
         request.setUserId(userId);
+        // PREVENÇÃO DE QUEBRA: Título adicionado ao Mock do teste
+        request.setTitle("Reserva Teste de Integração");
         request.setStartTime(LocalDateTime.now().plusDays(1));
         request.setEndTime(LocalDateTime.now().plusDays(1).plusHours(2));
 

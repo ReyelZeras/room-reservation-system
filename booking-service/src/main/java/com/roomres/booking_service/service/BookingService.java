@@ -60,6 +60,7 @@ public class BookingService {
         List<RoomDTO> allRooms = roomClient.getAllRooms();
         List<Booking> conflictingBookings = bookingRepository.findConflictingBookings(start, end);
         Set<UUID> occupiedRoomIds = conflictingBookings.stream().map(Booking::getRoomId).collect(Collectors.toSet());
+
         return allRooms.stream()
                 .filter(room -> !occupiedRoomIds.contains(room.id()))
                 .filter(room -> "AVAILABLE".equals(room.status()))
@@ -102,7 +103,6 @@ public class BookingService {
             throw new BusinessException("A sala já está reservada para o período selecionado.");
         }
 
-        // Valida e busca os nomes (Enriquecimento)
         Map<String, String> userDetails = getUserDetails(dto.getUserId());
         String roomName = getRoomName(dto.getRoomId());
 
@@ -110,6 +110,8 @@ public class BookingService {
                 .id(UUID.randomUUID())
                 .roomId(dto.getRoomId())
                 .userId(dto.getUserId())
+                // 🚀 A CORREÇÃO ESTÁ AQUI: Passamos o título do DTO para a Entidade
+                .title(dto.getTitle())
                 .startTime(dto.getStartTime())
                 .endTime(dto.getEndTime())
                 .status(BookingStatus.CONFIRMED)
@@ -118,6 +120,7 @@ public class BookingService {
         BookingResponseDTO response = new BookingResponseDTO(bookingRepository.save(booking));
 
         dispatchEvents(response, "RESERVA_CRIADA", userDetails.get("email"), userDetails.get("name"), roomName);
+
         return response;
     }
 
@@ -144,9 +147,10 @@ public class BookingService {
 
         booking.setStartTime(newStart);
         booking.setEndTime(newEnd);
-        BookingResponseDTO response = new BookingResponseDTO(bookingRepository.save(booking));
 
+        BookingResponseDTO response = new BookingResponseDTO(bookingRepository.save(booking));
         dispatchEvents(response, "RESERVA_REAGENDADA", userDetails.get("email"), userDetails.get("name"), roomName);
+
         return response;
     }
 
@@ -165,7 +169,9 @@ public class BookingService {
     public void deleteBookingPermanently(UUID id) {
         Booking booking = bookingRepository.findById(id).orElseThrow(() -> new NotFoundException("Reserva não encontrada."));
         bookingRepository.delete(booking);
-        try { auditPublisher.sendAuditEvent("RESERVA_DELETADA", "Reserva apagada."); } catch (Exception e) {}
+        try {
+            auditPublisher.sendAuditEvent("RESERVA_DELETADA", "Reserva apagada.");
+        } catch (Exception e) {}
     }
 
     private void validateDates(LocalDateTime start, LocalDateTime end) {
@@ -174,7 +180,6 @@ public class BookingService {
         if (start.isBefore(LocalDateTime.now())) throw new BusinessException("Não é permitido agendar no passado.");
     }
 
-    // O Dispatch agora recebe os Nomes!
     private void dispatchEvents(BookingResponseDTO response, String action, String userEmail, String userName, String roomName) {
         try {
             eventPublisher.sendReservationCreatedEvent(response, userEmail, userName, roomName);

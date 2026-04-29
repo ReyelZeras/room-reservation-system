@@ -43,6 +43,7 @@ public class EmailService {
             message.setText("Olá, " + dto.getUserName() + "!\n\n" +
                     introText +
                     "📌 Detalhes da Reserva:\n" +
+                    "Titulo: " + dto.getTitle() + "\n" +
                     "Sala: " + dto.getRoomName() + "\n" +
                     "Entrada: " + startFormatted + "\n" +
                     "Saída: " + endFormatted + "\n" +
