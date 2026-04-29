@@ -3,6 +3,7 @@
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
+
 	<!-- ======================================================= -->
 	<!-- 1. METADADOS DO PROJETO                                 -->
 	<!-- ======================================================= -->
@@ -10,6 +11,7 @@
 	<artifactId>suggestion-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>suggestion-service</name>
+
 
 	<!-- ======================================================= -->
 	<!-- 2. PROPRIEDADES (Ecossistema Quarkus e Java)            -->
@@ -24,6 +26,7 @@
 		<quarkus.platform.version>3.8.3</quarkus.platform.version>
 	</properties>
 
+
 	<!-- ======================================================= -->
 	<!-- 3. DEPENDÊNCIAS DO PROJETO                              -->
 	<!-- ======================================================= -->
@@ -34,10 +37,16 @@
 			<artifactId>quarkus-resteasy-reactive-jackson</artifactId>
 		</dependency>
 
+
 		<!-- Documentação OpenAPI e Swagger UI para Quarkus -->
 		<dependency>
 			<groupId>io.quarkus</groupId>
 			<artifactId>quarkus-smallrye-openapi</artifactId>
+		</dependency>
+		<!-- ADICIONADO: O "FeignClient" do Quarkus -->
+		<dependency>
+			<groupId>io.quarkus</groupId>
+			<artifactId>quarkus-rest-client-reactive-jackson</artifactId>
 		</dependency>
 
 
@@ -54,6 +63,7 @@
 		</dependency>
 	</dependencies>
 
+
 	<!-- ======================================================= -->
 	<!-- 4. GERENCIAMENTO DE DEPENDÊNCIAS (BOM do Quarkus)       -->
 	<!-- ======================================================= -->
@@ -68,6 +78,7 @@
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
+
 
 	<!-- ======================================================= -->
 	<!-- 5. PLUGINS DE BUILD (AOT, Live Reload e GraalVM)        -->
