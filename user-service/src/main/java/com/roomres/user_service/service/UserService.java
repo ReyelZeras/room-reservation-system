@@ -151,4 +151,23 @@ public class UserService {
         }
         return false;
     }
+
+    // NOVA FUNCIONALIDADE: Troca de Senha Logado
+    @Transactional
+    public void changeInternalPassword(UUID userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("Usuário não encontrado."));
+
+        if (!"local".equals(user.getProvider())) {
+            throw new BusinessException("Contas vinculadas a serviços externos (como o GitHub) não podem alterar a senha por aqui.");
+        }
+
+        // Verifica se a senha antiga bate com o Hash do banco de dados
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new BusinessException("A senha atual está incorreta.");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 }
