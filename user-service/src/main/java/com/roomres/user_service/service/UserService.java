@@ -170,4 +170,14 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
     }
+
+    //Soft-Delete (Inativar/Ativar Contas)
+    @Transactional
+    public User toggleUserStatus(UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("Usuário não encontrado."));
+
+        user.setActive(!user.isActive()); // Inverte a chave booleana
+        return userRepository.save(user);
+    }
 }
