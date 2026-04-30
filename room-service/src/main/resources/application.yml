@@ -5,7 +5,7 @@ spring:
   application:
     name: room-service
   datasource:
-    url: jdbc:postgresql://localhost:5442/room_db
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5442/room_db}
     username: room_user
     password: room_pass
   jpa:
@@ -14,6 +14,10 @@ spring:
     show-sql: true
   flyway:
     enabled: true
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: 6379
 
 springdoc:
   api-docs:
@@ -21,17 +25,29 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
-# --- NOVO: CONFIGURAÇÃO DO EUREKA CLIENT ---
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
-# Configuração de Observabilidade e Tracing
+# ==========================================
+# CONFIGURAÇÃO DE OBSERVABILIDADE (FASE 3)
+# ==========================================
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   tracing:
     sampling:
-      probability: 1.0 # 1.0 significa 100% (Rastreia TODAS as requisições). Em prod, seria 0.1 (10%) para poupar recursos.
+      probability: 1.0
   zipkin:
     tracing:
-      endpoint: "http://localhost:9411/api/v2/spans"
+      endpoint: ${MANAGEMENT_ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}

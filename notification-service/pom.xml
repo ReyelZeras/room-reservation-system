@@ -72,6 +72,12 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- Observabilidade: Prometheus-->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+
 		<!-- Documentação OpenAPI específica para WebFlux -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
