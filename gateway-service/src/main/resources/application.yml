@@ -6,40 +6,55 @@ spring:
     name: gateway-service
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: true
       routes:
-        - id: user-service-route
+        - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/api/v1/auth/**, /api/v1/users/**, /oauth2/**, /login/**
-
-        - id: room-service-route
+            - Path=/api/v1/auth/**, /api/v1/users/**
+        - id: room-service
           uri: lb://room-service
           predicates:
             - Path=/api/v1/rooms/**
           filters:
             - AuthenticationFilter
-
-        - id: booking-service-route
+        - id: booking-service
           uri: lb://booking-service
           predicates:
             - Path=/api/v1/bookings/**
           filters:
             - AuthenticationFilter
-
-        - id: notification-service-route
+        - id: notification-service
           uri: lb://notification-service
           predicates:
             - Path=/api/v1/notifications/**
-
-        - id: suggestion-service-route
+        - id: suggestion-service
           uri: http://suggestion-service:8086
           predicates:
             - Path=/api/v1/suggestions/**
 
 eureka:
   client:
-    serviceUrl:
-      defaultZone: http://discovery-service:8761/eureka/
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+
+# ==========================================
+# CONFIGURAÇÃO DE OBSERVABILIDADE (FASE 3)
+# ==========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${MANAGEMENT_ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}

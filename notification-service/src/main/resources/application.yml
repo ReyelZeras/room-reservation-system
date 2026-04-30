@@ -21,12 +21,30 @@ spring:
           starttls:
             enable: true
 
+app:
+  mail:
+    test-destination: ${TEST_DESTINATION_EMAIL}
+
 eureka:
   client:
     service-url:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
+# ==========================================
+# CONFIGURAÇÃO DE OBSERVABILIDADE (FASE 3)
+# ==========================================
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   tracing:
     sampling:
       probability: 1.0
