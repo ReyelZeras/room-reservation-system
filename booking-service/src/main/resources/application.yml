@@ -4,74 +4,56 @@ server:
 spring:
   application:
     name: booking-service
-
-  # Forçamos o perfil 'prod' ou 'default' para ignorar o 'dev' antigo que aponta para a porta 5440
-  profiles:
-    active: default
-
   datasource:
-    # Nova porta 5443 para o booking_db isolado (Microsserviços Nível 2)
-    url: jdbc:postgresql://localhost:5440/booking_db
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5443/booking_db}
     username: booking_user
     password: booking_pass
-    driver-class-name: org.postgresql.Driver
-
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: 5672
+    username: guest
+    password: guest
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-
-# Configuração do SpringDoc para documentação
-springdoc:
-  api-docs:
-    path: /api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-
-# Configurações de log para facilitar o debug da migração
-logging:
-  level:
-    org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
-    com.roomres.booking_service: DEBUG
-
-# --- NOVO: CONFIGURAÇÃO DO EUREKA CLIENT ---
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
 resilience4j:
   circuitbreaker:
     instances:
       roomServiceCB:
         registerHealthIndicator: true
-        # Janela de 10 chamadas para análise
         slidingWindowSize: 10
-        # Permite 3 chamadas de teste quando o circuito está "Meio Aberto"
         permittedNumberOfCallsInHalfOpenState: 3
         slidingWindowType: COUNT_BASED
-        # Mínimo de chamadas antes de calcular a taxa de falha
         minimumNumberOfCalls: 5
-        # Tempo que o circuito fica "Aberto" antes de tentar recuperar (5 segundos)
-        waitDurationInOpenState: 5s
-        # Se 50% das chamadas falharem, o circuito abre
+        waitDurationInOpenState: 10s
         failureRateThreshold: 50
-        eventConsumerBufferSize: 10
 
-# Configuração de Observabilidade e Tracing
+# ==========================================
+# CONFIGURAÇÃO DE OBSERVABILIDADE (FASE 3)
+# ==========================================
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   tracing:
     sampling:
-      probability: 1.0 # 1.0 significa 100% (Rastreia TODAS as requisições). Em prod, seria 0.1 (10%) para poupar recursos.
+      probability: 1.0
   zipkin:
     tracing:
-      endpoint: "http://localhost:9411/api/v2/spans"
+      endpoint: ${MANAGEMENT_ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}

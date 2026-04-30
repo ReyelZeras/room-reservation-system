@@ -25,8 +25,6 @@ spring:
           github:
             client-id: ${GITHUB_CLIENT_ID}
             client-secret: ${GITHUB_CLIENT_SECRET}
-            # A MÁGICA ESTÁ AQUI: Força o Spring a usar o localhost do API Gateway
-            # em vez de tentar adivinhar a URL de dentro da rede Docker.
             redirect-uri: "http://localhost:8080/login/oauth2/code/github"
 
 eureka:
@@ -34,7 +32,21 @@ eureka:
     service-url:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
+# ==========================================
+# CONFIGURAÇÃO DE OBSERVABILIDADE (FASE 3)
+# ==========================================
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   tracing:
     sampling:
       probability: 1.0
