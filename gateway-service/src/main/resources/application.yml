@@ -10,7 +10,8 @@ spring:
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/api/v1/auth/**, /api/v1/users/**
+            # CORREÇÃO: Adicionamos /oauth2/** e /login/** aqui para o GitHub passar!
+            - Path=/api/v1/auth/**, /api/v1/users/**, /oauth2/**, /login/**
         - id: room-service
           uri: lb://room-service
           predicates:
