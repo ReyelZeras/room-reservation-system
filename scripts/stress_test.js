@@ -11,7 +11,7 @@ const http = require('http');
 // ⚠️ CONFIGURAÇÕES (PREENCHA AQUI)
 // ==========================================
 // 1. Vá ao Front-end, faça Login e copie o seu Token JWT.
-const TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJlbWFpbEBlbWFpbC5jb20iLCJpYXQiOjE3Nzc1MjkwODcsImV4cCI6MTc3NzYxNTQ4N30.xhfWqXEUb5EjDEXCCzGZNDVY6juVd-MXomFXDMKcSns";
+const TOKEN = "COLE_O_SEU_TOKEN_AQUI_ENTRE_AS_ASPAS";
 
 // 2. Parâmetros do Ataque
 const TOTAL_REQUESTS = 5000; // Quantidade de "tiros" que vamos dar
