@@ -33,14 +33,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Subir Infraestrutura de Apoio (Testcontainers e BDs)
-        # OTIMIZAÇÃO: Subimos apenas os bancos e brokers. Sem compilar os microsserviços no Docker!
-        run: docker compose up -d user-db room-db booking-db audit-db rabbitmq zookeeper kafka redis zipkin
-
-      - name: Aguardar prontidao total da Infraestrutura
-        run: sleep 45
-
-      # BUILD E TESTES
+      # BUILD E TESTES COM TESTCONTAINERS NATIVO DO GITHUB ACTIONS
       - name: Build e Testes Automaticos (Spring Boot)
         if: ${{ matrix.service != 'suggestion-service' }}
         working-directory: ./${{ matrix.service }}
@@ -48,8 +41,8 @@ jobs:
           if [ "${{ matrix.service }}" == "discovery-service" ] || [ "${{ matrix.service }}" == "gateway-service" ] || [ "${{ matrix.service }}" == "notification-service" ]; then
             mvn clean install -DskipTests
           else
-            # A CORREÇÃO ESTÁ AQUI: -DskipTests adicionado para ignorar os testes que pedem BD!
-            mvn clean verify -DskipTests -Dspring.cloud.discovery.enabled=false -Dspring.cloud.config.enabled=false -Dspring.cloud.service-registry.auto-registration.enabled=false
+            #CORREÇÃO 3.3: Sem -DskipTests! O Testcontainers vai gerir a infraestrutura de testes!
+            mvn clean verify -Dspring.cloud.discovery.enabled=false -Dspring.cloud.config.enabled=false -Dspring.cloud.service-registry.auto-registration.enabled=false
           fi
 
       - name: Build Automatico (Quarkus)
@@ -71,7 +64,3 @@ jobs:
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
-
-      - name: Desligar Infraestrutura
-        if: always()
-        run: docker compose down
