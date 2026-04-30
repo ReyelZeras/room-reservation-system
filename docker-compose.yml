@@ -121,7 +121,7 @@ services:
     image: openzipkin/zipkin:latest
     container_name: zipkin
     ports:
-      - "9411:9411" # Acesso ao Painel do Zipkin (Distributed Tracing)
+      - "9411:9411"
     networks:
       - roomres-network
 
@@ -129,7 +129,6 @@ services:
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
-      # Lembre-se de ter o arquivo prometheus.yml na mesma pasta deste docker-compose!
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
@@ -168,15 +167,20 @@ services:
   user-service:
     build: ./user-service
     container_name: user-service
+    ports:
+      - "8081:8081"
     depends_on:
       user-db:
         condition: service_healthy
       discovery-service:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://user-db:5432/user_db
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
       - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+      - SPRING_RABBITMQ_HOST=rabbitmq
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-dummy}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-dummy}
     networks:
@@ -266,7 +270,7 @@ services:
     build: ./gateway-service
     container_name: gateway-service
     ports:
-      - "8080:8080" # Única porta exposta para a internet pública!
+      - "8080:8080"
     depends_on:
       discovery-service:
         condition: service_healthy
