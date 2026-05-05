@@ -1,2 +1,5 @@
 # Variaveis de Ambiente Locais
 .env
+
+# Kubernetes Local Secrets
+k8s/*-local.yaml

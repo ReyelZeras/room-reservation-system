@@ -1,0 +1,299 @@
+# --- DISCOVERY SERVICE ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discovery-service
+spec:
+  ports:
+    - port: 8761
+  selector:
+    app: discovery-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discovery-service
+spec:
+  selector:
+    matchLabels:
+      app: discovery-service
+  template:
+    metadata:
+      labels:
+        app: discovery-service
+    spec:
+      containers:
+        - name: discovery-service
+          image: reyelsoares/discovery-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8761
+
+# --- USER SERVICE ---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+spec:
+  ports:
+    - port: 8081
+  selector:
+    app: user-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+spec:
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: reyelsoares/user-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: roomres-config
+            - secretRef:
+                name: roomres-secrets
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://user-db:5432/user_db"
+
+# --- ROOM SERVICE ---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: room-service
+spec:
+  ports:
+    - port: 8082
+  selector:
+    app: room-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: room-service
+spec:
+  selector:
+    matchLabels:
+      app: room-service
+  template:
+    metadata:
+      labels:
+        app: room-service
+    spec:
+      containers:
+        - name: room-service
+          image: reyelsoares/room-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: roomres-config
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://room-db:5432/room_db"
+
+# --- BOOKING SERVICE ---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking-service
+spec:
+  ports:
+    - port: 8083
+  selector:
+    app: booking-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-service
+spec:
+  selector:
+    matchLabels:
+      app: booking-service
+  template:
+    metadata:
+      labels:
+        app: booking-service
+    spec:
+      containers:
+        - name: booking-service
+          image: reyelsoares/booking-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8083
+          envFrom:
+            - configMapRef:
+                name: roomres-config
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://booking-db:5432/booking_db"
+          resources:
+            requests:
+              cpu: "100m"
+            limits:
+              cpu: "500m"
+
+# --- AUDIT SERVICE ---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-service
+spec:
+  ports:
+    - port: 8084
+  selector:
+    app: audit-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-service
+spec:
+  selector:
+    matchLabels:
+      app: audit-service
+  template:
+    metadata:
+      labels:
+        app: audit-service
+    spec:
+      containers:
+        - name: audit-service
+          image: reyelsoares/audit-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8084
+          envFrom:
+            - configMapRef:
+                name: roomres-config
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://audit-db:5432/audit_db"
+
+# --- NOTIFICATION SERVICE ---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+spec:
+  ports:
+    - port: 8085
+  selector:
+    app: notification-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+spec:
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: reyelsoares/notification-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8085
+          envFrom:
+            - configMapRef:
+                name: roomres-config
+            - secretRef:
+                name: roomres-secrets
+
+# --- SUGGESTION SERVICE ---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: suggestion-service
+spec:
+  ports:
+    - port: 8086
+  selector:
+    app: suggestion-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: suggestion-service
+spec:
+  selector:
+    matchLabels:
+      app: suggestion-service
+  template:
+    metadata:
+      labels:
+        app: suggestion-service
+    spec:
+      containers:
+        - name: suggestion-service
+          image: reyelsoares/suggestion-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8086
+          envFrom:
+            - configMapRef:
+                name: roomres-config
+
+# --- GATEWAY SERVICE ---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+  selector:
+    app: gateway-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-service
+spec:
+  selector:
+    matchLabels:
+      app: gateway-service
+  template:
+    metadata:
+      labels:
+        app: gateway-service
+    spec:
+      containers:
+        - name: gateway-service
+          image: reyelsoares/gateway-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: roomres-config
