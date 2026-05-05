@@ -1,6 +1,7 @@
 package com.roomres.booking_service.repository;
 
 import com.roomres.booking_service.model.Booking;
+import com.roomres.booking_service.model.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -34,8 +35,11 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByRoomId(UUID roomId);
 
 
-    // NOVO: Vai buscar todas as reservas 'CONFIRMADAS' que colidem com o intervalo de tempo especificado.
+    // Vai buscar todas as reservas 'CONFIRMADAS' que colidem com o intervalo de tempo especificado.
     // A lógica (startTime < limiteFim AND endTime > limiteInicio) é a matemática padrão para intersecção temporal.
     @Query("SELECT b FROM Booking b WHERE b.status = 'CONFIRMED' AND (b.startTime < :endTime AND b.endTime > :startTime)")
     List<Booking> findConflictingBookings(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
+
+    // NOVO METODO: Busca reservas por status onde o endTime ja passou
+    List<Booking> findByStatusAndEndTimeBefore(BookingStatus status, LocalDateTime endTime);
 }
