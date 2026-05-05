@@ -1,6 +1,7 @@
-package com.roomres.notification_service.service;
+package com.roomres.notification_service;
 
 import com.roomres.notification_service.dto.BookingNotificationDTO;
+import com.roomres.notification_service.service.EmailService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
