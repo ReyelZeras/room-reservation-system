@@ -110,7 +110,6 @@ public class BookingService {
                 .id(UUID.randomUUID())
                 .roomId(dto.getRoomId())
                 .userId(dto.getUserId())
-                // 🚀 A CORREÇÃO ESTÁ AQUI: Passamos o título do DTO para a Entidade
                 .title(dto.getTitle())
                 .startTime(dto.getStartTime())
                 .endTime(dto.getEndTime())

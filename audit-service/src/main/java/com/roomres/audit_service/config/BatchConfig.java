@@ -32,7 +32,7 @@ public class BatchConfig {
 
     // 1. READER
     @Bean
-    @StepScope // <-- A MÁGICA ESTÁ AQUI: Garante que o método rode a cada disparo do cron!
+    @StepScope // <-- Garante que o método rode a cada disparo do cron!
     public RepositoryItemReader<AuditLog> oldAuditLogsReader() {
         // Agora o 'now()' será a hora EXATA em que o relógio disparar (ex: 22:50, 22:52, etc)
         LocalDateTime cutoffDate = LocalDateTime.now().minusMinutes(1);

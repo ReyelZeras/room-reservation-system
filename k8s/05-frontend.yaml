@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-ui
+  labels:
+    app: frontend-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend-ui
+  template:
+    metadata:
+      labels:
+        app: frontend-ui
+    spec:
+      containers:
+        - name: frontend-ui
+          image: roomres-frontend:latest
+          imagePullPolicy: Never # Crucial: Diz ao K8s para usar a imagem local
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  type: NodePort
+  selector:
+    app: frontend-ui
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30081

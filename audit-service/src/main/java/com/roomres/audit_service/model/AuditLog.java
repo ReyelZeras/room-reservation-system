@@ -22,7 +22,7 @@ public class AuditLog {
     private UUID id;
 
     @Column(name = "event_message")
-    private String eventMessage; // <-- Restaurado o campo que o Consumer espera!
+    private String eventMessage;
 
     // Campo vital para a rotina de limpeza do Spring Batch
     private LocalDateTime timestamp;
