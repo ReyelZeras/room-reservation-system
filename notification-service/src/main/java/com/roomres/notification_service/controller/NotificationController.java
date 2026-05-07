@@ -5,6 +5,7 @@ import com.roomres.notification_service.dto.BookingNotificationDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -15,6 +16,7 @@ import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/notifications")
 @RequiredArgsConstructor
@@ -28,19 +30,26 @@ public class NotificationController {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<BookingNotificationDTO>> streamNotifications() {
 
-        // O Ping não pode ser nulo para não crashar o serializador Jackson do Java
-        Flux<ServerSentEvent<BookingNotificationDTO>> pingFlux = Flux.interval(Duration.ofSeconds(15))
-                .map(sequence -> ServerSentEvent.<BookingNotificationDTO>builder()
+        // 1. O Ping serve para manter a rede girando se ninguém fizer reservas
+        Flux<ServerSentEvent<BookingNotificationDTO>> pingFlux = Flux.interval(Duration.ofSeconds(10))
+                .map(seq -> ServerSentEvent.<BookingNotificationDTO>builder()
                         .event("ping")
                         .data(new BookingNotificationDTO())
                         .build());
 
+        // 2. O Evento Real
         Flux<ServerSentEvent<BookingNotificationDTO>> eventFlux = notificationSink.getFlux()
                 .map(dto -> ServerSentEvent.<BookingNotificationDTO>builder()
-                        .event("nova-reserva")
+                        .event("notification")
                         .data(dto)
-                        .build());
+                        .build())
+                .doOnNext(e -> log.info("🔥 [SSE] EVENTO REAL disparado para o túnel!"));
 
-        return Flux.merge(pingFlux, eventFlux);
+        // 3. A CARTADA FINAL: .take(1)
+        // Isso faz o Java enviar EXATAMENTE 1 pacote (ou um ping ou a sua reserva) e logo depois FECHAR a conexão TCP.
+        // O Fechamento obriga a Cloudflare a cuspir o pacote para a UI instantaneamente!
+        return Flux.merge(pingFlux, eventFlux)
+                .take(1)
+                .doOnTerminate(() -> log.info("🔌 [SSE] Conexão encerrada intencionalmente para forçar o Flush da Cloudflare."));
     }
 }

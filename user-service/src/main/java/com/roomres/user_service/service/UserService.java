@@ -31,19 +31,43 @@ public class UserService {
 
     @Transactional
     public User createUser(User user) {
-        // PREVENÇÃO DE SEGURANÇA E DUAL WRITE
-        // Verifica ANTES de fazer qualquer coisa no banco ou disparar e-mails
-        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
-            throw new BusinessException("Este e-mail já está registrado no sistema.");
+        // CORREÇÃO: IDEMPOTÊNCIA NO CADASTRO (Falha 7)
+        Optional<User> existingUserByEmail = userRepository.findByEmail(user.getEmail());
+        if (existingUserByEmail.isPresent()) {
+            User found = existingUserByEmail.get();
+            if (!found.isActive()) {
+                // Usuário existe mas não ativou a conta. Reenviamos o email com novo token!
+                found.setVerificationToken(UUID.randomUUID().toString());
+                if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+                    found.setPassword(passwordEncoder.encode(user.getPassword()));
+                }
+                found.setName(user.getName());
+                User savedUser = userRepository.save(found);
+                userEventPublisher.sendVerificationEmailEvent(savedUser.getEmail(), savedUser.getName(), savedUser.getVerificationToken());
+                return savedUser;
+            }
+            throw new BusinessException("O e-mail informado já está em uso.");
         }
-        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
-            throw new BusinessException("Este nome de usuário já está em uso.");
+
+        Optional<User> existingUserByUsername = userRepository.findByUsername(user.getUsername());
+        if (existingUserByUsername.isPresent()) {
+            User found = existingUserByUsername.get();
+            if (!found.isActive()) {
+                found.setVerificationToken(UUID.randomUUID().toString());
+                if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+                    found.setPassword(passwordEncoder.encode(user.getPassword()));
+                }
+                found.setName(user.getName());
+                User savedUser = userRepository.save(found);
+                userEventPublisher.sendVerificationEmailEvent(savedUser.getEmail(), savedUser.getName(), savedUser.getVerificationToken());
+                return savedUser;
+            }
+            throw new BusinessException("O username informado já está em uso.");
         }
 
         if (user.getRole() == null || user.getRole().isEmpty()) {
             user.setRole("USER");
         }
-
         if (user.getPassword() != null && !user.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
@@ -53,7 +77,6 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
-        // Como validamos antes, é 100% seguro disparar o e-mail agora
         userEventPublisher.sendVerificationEmailEvent(savedUser.getEmail(), savedUser.getName(), savedUser.getVerificationToken());
 
         return savedUser;
@@ -64,14 +87,9 @@ public class UserService {
         return userRepository.findById(id).map(user -> {
             if (userDetails.getName() != null) user.setName(userDetails.getName());
             if (userDetails.getEmail() != null) user.setEmail(userDetails.getEmail());
-            if (userDetails.getRole() != null) user.setRole(userDetails.getRole().toUpperCase());
-
-            if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
-                user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
-            }
-
+            if (userDetails.getRole() != null) user.setRole(userDetails.getRole());
             return userRepository.save(user);
-        }).orElseThrow(() -> new RuntimeException("Usuário não encontrado."));
+        }).orElseThrow(() -> new BusinessException("Usuário não encontrado com id " + id));
     }
 
     @Transactional
@@ -95,7 +113,6 @@ public class UserService {
     @Transactional
     public User processOAuthUser(String email, String username, String name, String provider, String providerId) {
         Optional<User> userOptional = userRepository.findByEmail(email);
-
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             if (user.getProviderId() == null) {
@@ -107,30 +124,27 @@ public class UserService {
         }
 
         String finalUsername = username;
-
         if (userRepository.findByUsername(username).isPresent()) {
             finalUsername = username + "_" + UUID.randomUUID().toString().substring(0, 5);
         }
 
-        User newUser = new User();
-        newUser.setEmail(email);
-        newUser.setUsername(finalUsername);
-        newUser.setName(name != null ? name : finalUsername);
-        newUser.setProvider(provider);
-        newUser.setProviderId(providerId);
-        newUser.setRole("USER");
-        newUser.setActive(true); // O GitHub já verificou o email!
+        User newUser = User.builder()
+                .email(email)
+                .username(finalUsername)
+                .name(name)
+                .provider(provider)
+                .providerId(providerId)
+                .role("USER")
+                .active(true)
+                .build();
         return userRepository.save(newUser);
     }
-
 
     @Transactional
     public void requestPasswordReset(String email) {
         Optional<User> userOpt = userRepository.findByEmail(email);
-        // Por segurança (evitar enumeração de e-mails), não damos erro se não existir. Ignoramos silenciosamente.
         if (userOpt.isPresent()) {
             User user = userOpt.get();
-            // Usuários do GitHub não têm senha local para resetar.
             if ("local".equals(user.getProvider())) {
                 user.setResetPasswordToken(UUID.randomUUID().toString());
                 userRepository.save(user);
@@ -145,14 +159,13 @@ public class UserService {
         if (userOpt.isPresent()) {
             User user = userOpt.get();
             user.setPassword(passwordEncoder.encode(newPassword));
-            user.setResetPasswordToken(null); // Invalida o token após o uso
+            user.setResetPasswordToken(null);
             userRepository.save(user);
             return true;
         }
         return false;
     }
 
-    // NOVA FUNCIONALIDADE: Troca de Senha Logado
     @Transactional
     public void changeInternalPassword(UUID userId, String currentPassword, String newPassword) {
         User user = userRepository.findById(userId)
@@ -162,7 +175,6 @@ public class UserService {
             throw new BusinessException("Contas vinculadas a serviços externos (como o GitHub) não podem alterar a senha por aqui.");
         }
 
-        // Verifica se a senha antiga bate com o Hash do banco de dados
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new BusinessException("A senha atual está incorreta.");
         }
@@ -171,13 +183,12 @@ public class UserService {
         userRepository.save(user);
     }
 
-    //Soft-Delete (Inativar/Ativar Contas)
     @Transactional
     public User toggleUserStatus(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Usuário não encontrado."));
 
-        user.setActive(!user.isActive()); // Inverte a chave booleana
+        user.setActive(!user.isActive());
         return userRepository.save(user);
     }
 }
