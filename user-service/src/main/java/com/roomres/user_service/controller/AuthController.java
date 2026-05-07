@@ -90,17 +90,22 @@ public class AuthController {
 
     @Operation(summary = "Executar redefinição de senha")
     @PostMapping("/reset-password")
-    public ResponseEntity<String> resetPassword(@RequestParam String token, @RequestBody java.util.Map<String, String> payload) {
+    public ResponseEntity<java.util.Map<String, String>> resetPassword(@RequestBody java.util.Map<String, String> payload) {
+        String token = payload.get("token");
         String newPassword = payload.get("newPassword");
+
+        if (token == null || token.isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "Token é obrigatório."));
+        }
         if (newPassword == null || newPassword.isEmpty()) {
-            return ResponseEntity.badRequest().body("Nova senha é obrigatória.");
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "Nova senha é obrigatória."));
         }
 
         boolean success = userService.resetPassword(token, newPassword);
         if (success) {
-            return ResponseEntity.ok("Senha redefinida com sucesso.");
+            return ResponseEntity.ok(java.util.Map.of("message", "Senha alterada com sucesso!"));
         } else {
-            return ResponseEntity.badRequest().body("Token de recuperação inválido ou expirado.");
+            return ResponseEntity.status(400).body(java.util.Map.of("message", "Token de recuperação inválido ou expirado."));
         }
     }
 }

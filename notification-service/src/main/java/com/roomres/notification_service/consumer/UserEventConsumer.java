@@ -21,12 +21,18 @@ public class UserEventConsumer {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    // INJETANDO A URL DO FRONTEND (Vem do Kubernetes / .env)
+    @Value("${FRONTEND_URL:http://localhost:4200}")
+    private String frontendUrl;
+
     @RabbitListener(queues = RabbitMQConfig.QUEUE_USER_REGISTERED)
     public void processUserRegistration(Map<String, String> payload) {
         String email = payload.get("email");
         String name = payload.get("name");
         String token = payload.get("token");
-        String verificationUrl = "http://localhost:4200/verify?token=" + token;
+
+        // CORREÇÃO: Usando a URL dinâmica
+        String verificationUrl = frontendUrl + "/verify?token=" + token;
 
         log.info("🔔 Recebido evento de novo usuário. Enviando e-mail de ativação para: {}", email);
 
@@ -38,14 +44,13 @@ public class UserEventConsumer {
             helper.setTo(email);
             helper.setSubject("RoomRes - Ative a sua conta");
 
-            // Template HTML elegante
             String htmlContent = "<h2>Bem-vindo ao RoomRes, " + name + "!</h2>"
                     + "<p>Obrigado por criar uma conta. Para começar a reservar salas, confirme o seu e-mail clicando no botão abaixo:</p>"
                     + "<a href='" + verificationUrl + "' style='display: inline-block; padding: 10px 20px; font-size: 16px; color: #fff; background-color: #2563EB; text-decoration: none; border-radius: 5px; margin-top: 15px;'>Ativar Minha Conta</a>"
                     + "<br><br><p>Ou copie e cole este link no seu navegador:</p>"
                     + "<p><small>" + verificationUrl + "</small></p>";
 
-            helper.setText(htmlContent, true); // true = HTML
+            helper.setText(htmlContent, true);
             mailSender.send(message);
 
             log.info("✅ E-mail de ativação enviado com sucesso!");
@@ -54,19 +59,20 @@ public class UserEventConsumer {
         }
     }
 
-
     @RabbitListener(queues = RabbitMQConfig.QUEUE_PASSWORD_RESET)
     public void processPasswordReset(Map<String, String> payload) {
         String email = payload.get("email");
         String name = payload.get("name");
         String token = payload.get("token");
-        String resetUrl = "http://localhost:4200/reset-password?token=" + token;
+
+        // CORREÇÃO: Usando a URL dinâmica
+        String resetUrl = frontendUrl + "/reset-password?token=" + token;
 
         log.info("🔔 Recebido pedido de reset de senha. Enviando e-mail para: {}", email);
 
         try {
-            jakarta.mail.internet.MimeMessage message = mailSender.createMimeMessage();
-            org.springframework.mail.javamail.MimeMessageHelper helper = new org.springframework.mail.javamail.MimeMessageHelper(message, true, "UTF-8");
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setFrom(fromEmail);
             helper.setTo(email);

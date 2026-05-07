@@ -20,7 +20,7 @@ type: Opaque
 stringData:
   # A chave esquerda (GITHUB_...) é a que o Java lê. Não podemos mudá-la.
   # O valor direito (OAUTH_...) é a variável do GitHub Secrets.
-  GITHUB_CLIENT_ID: "${OAUTH_CLIENT_ID}"
-  GITHUB_CLIENT_SECRET: "${OAUTH_CLIENT_SECRET}"
-  MAIL_USERNAME: "${MAIL_USERNAME}"
-  MAIL_PASSWORD: "${MAIL_PASSWORD}"
+  OAUTH_CLIENT_ID: "client-id-falso"
+  OAUTH_CLIENT_SECRET: "client-secret-falso"
+  MAIL_USERNAME: "nao-configurado@gmail.com"
+  MAIL_PASSWORD: "senha-falsa-temporaria"

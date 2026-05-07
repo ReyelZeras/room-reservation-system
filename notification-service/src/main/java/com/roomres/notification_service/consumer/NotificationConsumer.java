@@ -19,41 +19,36 @@ import java.util.Map;
 public class NotificationConsumer {
 
     private final EmailService emailService;
-    private final NotificationSink notificationSink; // O NOSSO MEGAFONE REATIVO
+    private final NotificationSink notificationSink;
     private final JavaMailSender mailSender;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    // ==========================================
-    // 1. FLUXO DE RESERVAS (E-mail + SSE Angular)
-    // ==========================================
+    // INJETANDO A URL DO FRONTEND (Kubernetes assumirá o controle)
+    @Value("${FRONTEND_URL:http://localhost:4200}")
+    private String frontendUrl;
+
     @RabbitListener(queues = RabbitMQConfig.QUEUE_RESERVA_CRIADA)
     public void processBookingEvent(BookingNotificationDTO bookingEvent) {
         log.info("==================================================");
         log.info("🔔 NOTIFICAÇÃO PROCESSADA (Sala: {})", bookingEvent.getRoomName());
         log.info("==================================================");
 
-        // CORREÇÃO ARQUITETURAL: INVERSÃO DE ORDEM!
-        // 1. Dispara a Notificação em Tempo Real (SSE) PRIMEIRO.
-        // O Angular recebe em milissegundos e o Sininho toca instantaneamente!
         notificationSink.emitNext(bookingEvent);
         log.info("📡 Evento SSE disparado com sucesso para a UI!");
 
-        // 2. Envia o e-mail DEPOIS.
-        // O servidor de E-mail pode demorar os 4 segundos dele sem congelar a experiência do utilizador.
         emailService.sendBookingConfirmation(bookingEvent);
     }
 
-    // ==========================================
-    // 2. FLUXO DE REGISTO DE UTILIZADOR
-    // ==========================================
     @RabbitListener(queues = RabbitMQConfig.QUEUE_USER_REGISTERED)
     public void processUserRegistered(Map<String, String> payload) {
         String email = payload.get("email");
         String name = payload.get("name");
         String token = payload.get("token");
-        String verificationUrl = "http://localhost:4200/verify?token=" + token;
+
+        // CORREÇÃO DA URL DE ATIVAÇÃO
+        String verificationUrl = frontendUrl + "/verify?token=" + token;
 
         log.info("🔔 Recebido evento de registro. Enviando e-mail de ativação para: {}", email);
 
@@ -76,15 +71,14 @@ public class NotificationConsumer {
         }
     }
 
-    // ==========================================
-    // 3. FLUXO DE RECUPERAÇÃO DE SENHA
-    // ==========================================
     @RabbitListener(queues = RabbitMQConfig.QUEUE_PASSWORD_RESET)
     public void processPasswordReset(Map<String, String> payload) {
         String email = payload.get("email");
         String name = payload.get("name");
         String token = payload.get("token");
-        String resetUrl = "http://localhost:4200/reset-password?token=" + token;
+
+        // CORREÇÃO DA URL DE RESET
+        String resetUrl = frontendUrl + "/reset-password?token=" + token;
 
         log.info("🔔 Recebido pedido de reset de senha. Enviando e-mail para: {}", email);
 

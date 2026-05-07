@@ -57,7 +57,7 @@ spec:
       containers:
         - name: user-service
           image: reyelsoares/user-service:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           ports:
             - containerPort: 8081
           envFrom:
@@ -66,6 +66,14 @@ spec:
             - secretRef:
                 name: roomres-secrets
           env:
+            - name: FRONTEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: roomres-config
+                  key: FRONTEND_URL
+            # ---> ADICIONE ESTAS DUAS LINHAS <---
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GITHUB_REDIRECT_URI
+              value: "$(FRONTEND_URL)/login/oauth2/code/github"
             - name: SPRING_DATASOURCE_URL
               value: "jdbc:postgresql://user-db:5432/user_db"
 
@@ -216,7 +224,7 @@ spec:
       containers:
         - name: notification-service
           image: reyelsoares/notification-service:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           ports:
             - containerPort: 8085
           envFrom:
@@ -224,6 +232,12 @@ spec:
                 name: roomres-config
             - secretRef:
                 name: roomres-secrets
+          env:
+            - name: FRONTEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: roomres-config
+                  key: FRONTEND_URL
 
 # --- SUGGESTION SERVICE ---
 ---
