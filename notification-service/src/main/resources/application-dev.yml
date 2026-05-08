@@ -1,0 +1,7 @@
+frontend:
+  url: "http://localhost:4200"
+
+# No ambiente local (sem proxies bloqueadores), o SSE pode manter a conexão por muito tempo
+sse:
+  # Quantos eventos enviar antes de fechar a conexão (Take 100 por ex, ou apenas omitir o take no código se for dev)
+  limit: 100

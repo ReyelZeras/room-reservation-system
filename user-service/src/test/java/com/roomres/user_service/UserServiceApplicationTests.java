@@ -13,7 +13,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @TestPropertySource(properties = {
 		"eureka.client.enabled=false",
-		"spring.cloud.discovery.enabled=false"
+		"spring.cloud.discovery.enabled=false",
+		"spring.security.oauth2.client.registration.github.client-id=test-id",
+		"spring.security.oauth2.client.registration.github.client-secret=test-secret"
 })
 class UserServiceApplicationTests {
 
