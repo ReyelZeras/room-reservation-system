@@ -1,0 +1,12 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID_DEV}
+            client-secret: ${GITHUB_CLIENT_SECRET_DEV}
+            redirect-uri: "http://localhost:4200/login/oauth2/code/github"
+
+frontend:
+  url: "http://localhost:4200"

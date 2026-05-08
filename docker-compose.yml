@@ -76,7 +76,7 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq
     ports:
-      - "15672:15672" # Painel Visual do RabbitMQ (Login: guest/guest)
+      - "15672:15672"
     networks:
       - roomres-network
     healthcheck:
@@ -177,12 +177,13 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
+      - SPRING_PROFILES_ACTIVE=dev
       - SPRING_DATASOURCE_URL=jdbc:postgresql://user-db:5432/user_db
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
       - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
       - SPRING_RABBITMQ_HOST=rabbitmq
-      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-dummy}
-      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-dummy}
+      - GITHUB_CLIENT_ID_DEV=${GITHUB_CLIENT_ID_DEV:-dummy}
+      - GITHUB_CLIENT_SECRET_DEV=${GITHUB_CLIENT_SECRET_DEV:-dummy}
     networks:
       - roomres-network
 
@@ -250,6 +251,7 @@ services:
       discovery-service:
         condition: service_healthy
     environment:
+      - SPRING_PROFILES_ACTIVE=dev
       - SPRING_RABBITMQ_HOST=rabbitmq
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
       - MAIL_USERNAME=${MAIL_USERNAME:-dummy}
@@ -277,5 +279,16 @@ services:
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
       - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+    networks:
+      - roomres-network
+
+  roomres-frontend:
+    image: reyelsoares/roomres-frontend:latest
+    container_name: roomres-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      gateway-service:
+        condition: service_started
     networks:
       - roomres-network

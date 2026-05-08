@@ -1,0 +1,7 @@
+frontend:
+  url: ${FRONTEND_URL}
+
+# No ambiente de produção (com Cloudflare), usamos o "Ciclo Curto" para forçar o flush
+sse:
+  # Envia apenas 1 evento e corta a conexão TCP
+  limit: 1

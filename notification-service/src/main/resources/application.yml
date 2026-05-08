@@ -23,7 +23,7 @@ spring:
 
 app:
   mail:
-    test-destination: ${TEST_DESTINATION_EMAIL}
+    test-destination: ${TEST_DESTINATION_EMAIL:admin@roomres.com}
 
 eureka:
   client:
