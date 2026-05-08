@@ -123,6 +123,8 @@ O Eureka Server (Dashboard) estará em: http://localhost:8761
 
 O RabbitMQ Management estará em: http://localhost:15672
 
-
+3. Usário ADMIN padrão para utilização do sistema:
+E-mail: admin@roomres.com
+Senha: Teste123@
 
 Desenvolvido com foco em escalabilidade, resiliência e boas práticas de engenharia de software.
