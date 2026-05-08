@@ -1,139 +1,128 @@
-🏢 API de Reserva de Salas - Nível 1
+🏢 RoomRes - Sistema Avançado de Reserva de Salas (Cloud-Native)
 
-Esta API foi desenvolvida para gerir o agendamento de salas de reunião, garantindo que não existam conflitos de horários e permitindo um fluxo organizado de reservas. O projeto foca em boas práticas de desenvolvimento, persistência de dados e containerização.
+O RoomRes evoluiu de uma API monolítica simples para uma Arquitetura de Microsserviços Cloud-Native altamente escalável, resiliente e distribuída. Este projeto tem como objetivo gerenciar reservas de salas corporativas, garantindo integridade de dados, comunicação assíncrona, notificações em tempo real e observabilidade.
 
-🚀 Funcionalidades Atuais
+🚀 Principais Funcionalidades e Destaques Arquiteturais
 
-Gestão de Usuários: CRUD completo para registo de colaboradores.
+Autenticação Híbrida e Segura: Login via OAuth2 (GitHub) e autenticação baseada em JWT.
 
-Gestão de Salas: Registo de salas com capacidade e estado (ATIVA/INATIVA).
+Comunicação Assíncrona e Mensageria:
 
-Sistema de Reservas:
+RabbitMQ: Roteamento de e-mails transacionais e eventos de notificação em tempo real.
 
-Validação de conflitos (impede sobreposição de horários na mesma sala).
+Apache Kafka: Registro imutável de trilhas de auditoria (Audit Log) processando alto volume de eventos.
 
-Suporte a intervalos semiabertos (uma reserva pode começar exatamente quando outra termina).
+Notificações em Tempo Real (SSE): Arquitetura Server-Sent Events com "Modo Guerrilha" (reconhecimento automático de proxies e limites dinâmicos para furar bloqueios de buffer do Cloudflare/Nginx).
 
-Fluxo de cancelamento de reservas.
+Caching Distribuído: Utilização de Redis no room-service para respostas ultrarrápidas do catálogo de salas.
 
-Validações de Domínio: Erros amigáveis para datas inválidas ou reservas em salas inativas.
+Paridade de Ambientes: Perfis dinâmicos do Spring (dev e prod) que reagem automaticamente se a aplicação está rodando localmente (Docker Compose) ou na nuvem (Kubernetes).
 
-🛠️ Tecnologias Utilizadas
+CI/CD Total: Pipelines no GitHub Actions realizando builds, testes com Testcontainers e push automatizado de imagens para o Docker Hub.
 
-Java 17 & Spring Boot 3
+🧩 Arquitetura de Microsserviços
 
-Spring Data JPA: Abstração de persistência.
+O ecossistema é composto por 8 serviços independentes operando por trás de um API Gateway:
 
-PostgreSQL: Base de dados relacional.
+gateway-service (Porta 8080): Ponto de entrada único usando Spring Cloud Gateway. Faz o roteamento e validação inicial.
 
-Flyway: Gestão de migrações e evolução do esquema da base de dados.
+discovery-service (Porta 8761): Netflix Eureka Server. Serviço de registro e descoberta dinâmica de instâncias.
 
-Docker & Docker Compose: Orquestração de containers.
+user-service: Gestão de usuários, perfis, integração OAuth2 e emissão de JWT.
 
-Maven: Gestão de dependências e build.
+room-service: Catálogo completo de salas, capacidades e status, com caching em Redis.
 
-JUnit 5 & Mockito: Testes de unidade e validação de regras de negócio.
+booking-service: Core business. Impede sobreposição de horários e gerencia o ciclo de vida da reserva. Publica eventos para RabbitMQ e Kafka.
 
-📦 Como Executar o Projeto
+notification-service: Consumidor assíncrono. Dispara e-mails de confirmação/cancelamento e empurra eventos SSE diretamente para o Front-end.
+
+audit-service: Serviço de Compliance. Ouve os tópicos do Kafka e registra todas as ações críticas em um banco de dados isolado.
+
+suggestion-service: Algoritmo dedicado a recomendar salas alternativas quando há conflitos de horário.
+
+🛠️ Stack Tecnológica
+
+Backend & Core:
+
+Java 17 | Spring Boot 3
+
+Spring Cloud (Gateway, Netflix Eureka, OpenFeign)
+
+Spring Security | OAuth2 | JWT
+
+Bancos de Dados & Caching:
+
+PostgreSQL (4 instâncias isoladas: User, Room, Booking, Audit)
+
+Redis (Caching de Salas)
+
+Flyway (Database Migrations)
+
+Mensageria & Streaming:
+
+RabbitMQ
+
+Apache Kafka & Zookeeper
+
+DevOps & Infraestrutura:
+
+Docker & Docker Compose
+
+Kubernetes (Minikube)
+
+GitHub Actions (CI/CD)
+
+Cloudflare Tunnels (Acesso Externo Seguro)
+
+Testcontainers (Testes de Integração Descartáveis)
+
+Observabilidade (Fase 3):
+
+Zipkin (Distributed Tracing)
+
+Prometheus (Metrics)
+
+Grafana (Dashboards)
+
+📦 Como Executar o Projeto (Modo Produção)
+
+A infraestrutura foi desenhada para subir com um único comando usando as imagens compiladas pela pipeline de CI/CD, não havendo necessidade de compilar o código fonte localmente.
 
 Pré-requisitos
 
 Docker e Docker Compose instalados.
 
-Passo a Passo
+Conta no GitHub (para autenticação OAuth2).
 
-Clone o repositório para a sua máquina.
+1. Configuração do Ambiente
 
-No terminal, na raiz do projeto, execute:
+Crie um arquivo .env na raiz do projeto com as seguintes variáveis:
 
-docker-compose up --build -d
+GITHUB_CLIENT_ID=sua_chave_aqui
+GITHUB_CLIENT_SECRET=seu_secret_aqui
 
+GITHUB_CLIENT_ID_DEV=sua_chave_local_aqui
+GITHUB_CLIENT_SECRET_DEV=seu_secret_local_aqui
 
-A aplicação estará disponível em http://localhost:8080/api/v1.
-
-O PostgreSQL estará acessível na porta 5440.
-
-📡 Endpoints Principais
-
-Recurso
-
-Método
-
-Endpoint
-
-Descrição
-
-Usuários
-
-POST
-
-/usuarios
-
-Cria um novo usuário
-
-Usuários
-
-GET
-
-/usuarios
-
-Lista todos os usuários
-
-Salas
-
-POST
-
-/salas
-
-Regista uma nova sala
-
-Salas
-
-GET
-
-/salas
-
-Lista todas as salas
-
-Reservas
-
-POST
-
-/reservas
-
-Cria um agendamento (valida conflitos)
-
-Reservas
-
-GET
-
-/reservas
-
-Lista todas as reservas
-
-Reservas
-
-PATCH
-
-/reservas/{id}/cancelar
-
-Cancela uma reserva ativa
-
-🧪 Testes de Unidade
-
-Para validar as regras de negócio e a lógica de conflitos de horário, execute:
-
-./mvnw test
+MAIL_USERNAME=seu_email@gmail.com
+MAIL_PASSWORD=sua_senha_de_aplicativo
 
 
-📂 Estrutura de Pastas
+2. Subindo a Arquitetura Completa
 
-src/main/java: Lógica da aplicação (Controllers, Services, Repositories).
+No terminal, execute:
 
-src/main/resources/db/migration: Scripts SQL de migração da base de dados.
+docker-compose up -d
 
-Dockerfile: Instruções para criação da imagem da aplicação.
 
-docker-compose.yml: Definição dos serviços (API e Base de Dados).
+O Docker irá baixar o ecossistema completo (PostgreSQL, Kafka, RabbitMQ, Redis, Microsserviços e o Front-end em Angular) diretamente do Docker Hub.
 
-Desenvolvido como parte do desafio de Prática Profissional - Nível 1.
+A Interface da Aplicação estará disponível em: http://localhost:4200
+
+O Eureka Server (Dashboard) estará em: http://localhost:8761
+
+O RabbitMQ Management estará em: http://localhost:15672
+
+
+
+Desenvolvido com foco em escalabilidade, resiliência e boas práticas de engenharia de software.
